@@ -5,3 +5,4 @@
 - [ ] Modo simple / profesional, editor 2D
 - [ ] Exportes PNG, PDF, JSON, CSV, XML Arena (con plantilla)
 - [ ] Tests, README despliegue subdominio/subruta
+- [ ] Logo Start Solution en firma + pie con redes MANSSO TIP y Start Solution (falta: URLs reales de redes)
