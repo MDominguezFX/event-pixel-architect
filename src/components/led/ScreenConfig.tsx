@@ -166,7 +166,7 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
         </Card>
       </div>
 
-      <div className="min-w-0 space-y-3">
+      <div className="order-first min-w-0 space-y-3 lg:order-none">
         <Card title="Resultados">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
             <Stat label={screen.geometry.type === "plana" ? "Ancho" : "Ancho desarrollado"} value={fmtM(stats.widthMm)} />
