@@ -1,0 +1,11 @@
+# Roadmap MANSSO PIXEL — LED Planner
+- [x] Renombrar a MANSSO PIXEL y usar logo oficial
+- [x] Catálogo + panel custom
+- [x] Motor de cálculo, mezcla, curvas
+- [x] Modo simple / profesional, editor 2D con deshacer/rehacer
+- [x] Exportes PNG, PDF, JSON, CSV, XML Arena (con plantilla)
+- [x] Tests, README despliegue subdominio/subruta
+- [x] Pie: Desarrollado por Start Solution, logos e Instagram
+- [x] Optimización móvil y pie en pantallas chicas
+- [ ] Probar XML en Arena real (bloqueado: falta preset exportado por tu versión de Arena)
+- [ ] Vista 3D esquemática (opcional)
