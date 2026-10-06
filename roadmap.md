@@ -1,10 +1,11 @@
 # Roadmap MANSSO PIXEL — LED Planner
-- [ ] Renombrar a MANSSO PIXEL y usar logo oficial subido
-- [ ] Catálogo + panel custom
-- [ ] Motor de cálculo, mezcla, curvas
-- [ ] Modo simple / profesional, editor 2D
-- [ ] Exportes PNG, PDF, JSON, CSV, XML Arena (con plantilla)
-- [ ] Tests, README despliegue subdominio/subruta
-- [ ] Logo Start Solution en firma + pie con redes MANSSO TIP y Start Solution IG: instagram.com/manssotip, instagram.com/startsolution.ar
-- [ ] Pie: 'Desarrollado por Start Solution' (https://startsolution.com.ar/) con logos debajo
-- [ ] Optimizar en móvil y verificar pie/enlaces en pantallas chicas (captura 390px)
+- [x] Renombrar a MANSSO PIXEL y usar logo oficial
+- [x] Catálogo + panel custom
+- [x] Motor de cálculo, mezcla, curvas
+- [x] Modo simple / profesional, editor 2D con deshacer/rehacer
+- [x] Exportes PNG, PDF, JSON, CSV, XML Arena (con plantilla)
+- [x] Tests, README despliegue subdominio/subruta
+- [x] Pie: Desarrollado por Start Solution, logos e Instagram
+- [x] Optimización móvil y pie en pantallas chicas
+- [ ] Probar XML en Arena real (bloqueado: falta preset exportado por tu versión de Arena)
+- [ ] Vista 3D esquemática (opcional)
