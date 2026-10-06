@@ -105,7 +105,11 @@ function drawPdf(doc: jsPDF, plan: Plan, box: { x: number; y: number; w: number;
     } else {
       doc.setTextColor(...hexRgb(p.color)); doc.setFont("helvetica", p.bold ? "bold" : "normal");
       doc.setFontSize(Math.max(4, (p.size * k) / 0.3528));
-      doc.text(p.s, X(p.x), Y(p.y), { align: p.align ?? "left", angle: p.rot ? -p.rot : 0 });
+      if (p.rot) {
+        // jsPDF ignora align con ángulo: centrar manualmente a lo largo del eje rotado.
+        const tw = doc.getTextWidth(p.s);
+        doc.text(p.s, X(p.x), Y(p.y) + (p.align === "center" ? tw / 2 : 0), { angle: -p.rot });
+      } else doc.text(p.s, X(p.x), Y(p.y), { align: p.align ?? "left" });
     }
   }
 }
