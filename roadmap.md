@@ -1,0 +1,7 @@
+# Roadmap MANSSO PIXEL — LED Planner
+- [ ] Renombrar a MANSSO PIXEL y usar logo oficial subido
+- [ ] Catálogo + panel custom
+- [ ] Motor de cálculo, mezcla, curvas
+- [ ] Modo simple / profesional, editor 2D
+- [ ] Exportes PNG, PDF, JSON, CSV, XML Arena (con plantilla)
+- [ ] Tests, README despliegue subdominio/subruta
