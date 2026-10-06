@@ -1,0 +1,172 @@
+import { useEffect, useRef, useState } from "react";
+import { Copy, Redo2, Trash2, Undo2, ZoomIn, ZoomOut, Plus } from "lucide-react";
+import { screenStats, fmtM } from "@/lib/led/engine";
+import { newScreen, uid, type Screen, type ScreenKind } from "@/lib/led/model";
+import { allPanels, redo, undo, update, useStore } from "@/lib/led/store";
+import { TYPE_COLORS } from "@/lib/led/plan";
+import { Btn, Card, Field, inputCls, Num } from "./ui";
+
+const KINDS: { id: ScreenKind; label: string }[] = [
+  { id: "principal", label: "Principal" }, { id: "lateral", label: "Lateral" }, { id: "totem", label: "Tótem" },
+  { id: "banner", label: "Banner / cenefa" }, { id: "cabina", label: "Frente cabina DJ" }, { id: "arco", label: "Arco / cilindro" }, { id: "libre", label: "Libre" },
+];
+
+export function ProEditor({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
+  const st = useStore();
+  const panels = allPanels(st);
+  const lookup = (id: string) => panels.find((p) => p.id === id);
+  const p = st.project;
+  const [view, setView] = useState({ x: -1000, y: -1000, k: 0.06 });
+  const [snap, setSnap] = useState(100);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
+  const [showDims, setShowDims] = useState(true);
+  const drag = useRef<{ id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
+  const sel = p.screens.find((s) => s.id === selected);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || (e.target as HTMLElement).tagName === "INPUT") return;
+      if (e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
+  }, []);
+
+  const mod = (id: string, fn: (s: Screen) => void) => update((pr) => { fn(pr.screens.find((x) => x.id === id)!); return pr; });
+  const sn = (v: number) => (snap > 0 ? Math.round(v / snap) * snap : Math.round(v));
+  const vw = 1000, vh = 560;
+
+  const onDown = (e: React.PointerEvent, id?: string) => {
+    e.stopPropagation(); (e.target as Element).setPointerCapture?.(e.pointerId);
+    const s = id ? p.screens.find((x) => x.id === id)! : null;
+    drag.current = { id, sx: e.clientX, sy: e.clientY, ox: s ? s.x : view.x, oy: s ? s.y : view.y, moved: false };
+    if (id) onSelect(id);
+  };
+  const scale = () => { const r = svgRef.current!.getBoundingClientRect(); return vw / r.width / view.k; };
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current; if (!d) return;
+    const dx = (e.clientX - d.sx) * scale(), dy = (e.clientY - d.sy) * scale();
+    d.moved = true;
+    if (d.id) setLive({ id: d.id, x: sn(d.ox + dx), y: sn(d.oy + dy) });
+    else setView((v) => ({ ...v, x: d.ox - dx, y: d.oy - dy }));
+  };
+  const onUp = () => {
+    const d = drag.current; drag.current = null;
+    if (d?.id && live) { const L = live; mod(d.id, (s) => { s.x = L.x; s.y = L.y; }); }
+    setLive(null);
+  };
+  const zoom = (f: number) => setView((v) => {
+    const cx = v.x + vw / v.k / 2, cy = v.y + vh / v.k / 2, k = Math.min(1, Math.max(0.005, v.k * f));
+    return { k, x: cx - vw / k / 2, y: cy - vh / k / 2 };
+  });
+  const fit = () => {
+    let a = 0, b = 0, c = 1000, d = 1000;
+    p.screens.forEach((s) => { const t = screenStats(s, lookup); a = Math.min(a, s.x); b = Math.min(b, s.y); c = Math.max(c, s.x + t.widthMm); d = Math.max(d, s.y + t.heightMm); });
+    const k = Math.min(vw / (c - a), vh / (d - b)) * 0.85;
+    setView({ k, x: a - (vw / k - (c - a)) / 2, y: b - (vh / k - (d - b)) / 2 });
+  };
+  useEffect(fit, [p.screens.length]);
+
+  const align = (mode: "left" | "top" | "distH") => update((pr) => {
+    const ss = pr.screens;
+    if (mode === "left") { const m = Math.min(...ss.map((s) => s.x)); ss.forEach((s) => (s.x = m)); }
+    if (mode === "top") { const m = Math.min(...ss.map((s) => s.y)); ss.forEach((s) => (s.y = m)); }
+    if (mode === "distH") {
+      const sorted = [...ss].sort((a, b) => a.x - b.x);
+      const widths = sorted.map((s) => screenStats(s, lookup).widthMm);
+      const first = sorted[0]!, lastI = sorted.length - 1;
+      const span = sorted[lastI]!.x + widths[lastI]! - first.x;
+      const gap = (span - widths.reduce((a, b) => a + b, 0)) / Math.max(1, lastI);
+      let x = first.x; sorted.forEach((s, i) => { s.x = Math.round(x); x += widths[i]! + gap; });
+    }
+    return pr;
+  });
+
+  const addScreen = (kind: ScreenKind) => {
+    const pnl = lookup("r500-p39")!;
+    const dims: Record<ScreenKind, [number, number]> = { principal: [8, 5], lateral: [4, 6], totem: [2, 6], banner: [16, 1], cabina: [6, 2], arco: [12, 4], libre: [4, 4] };
+    const [c, r] = dims[kind];
+    const s = newScreen(pnl, KINDS.find((k) => k.id === kind)!.label, c, r);
+    s.kind = kind;
+    const maxX = Math.max(0, ...p.screens.map((x) => x.x + screenStats(x, lookup).widthMm));
+    s.x = maxX + 1000;
+    if (kind === "arco") s.geometry.type = "arco";
+    update((pr) => { pr.screens.push(s); return pr; });
+    onSelect(s.id);
+  };
+
+  const gridStep = snap > 0 ? Math.max(snap, 500) : 500;
+  const gx0 = Math.floor(view.x / gridStep) * gridStep, gy0 = Math.floor(view.y / gridStep) * gridStep;
+  const gxs: number[] = [], gys: number[] = [];
+  if (showGrid) {
+    for (let x = gx0; x < view.x + vw / view.k && gxs.length < 400; x += gridStep) gxs.push(x);
+    for (let y = gy0; y < view.y + vh / view.k && gys.length < 400; y += gridStep) gys.push(y);
+  }
+  const fs = 12 / view.k;
+
+  return (
+    <Card title="Editor de escena (2D)" actions={
+      <div className="flex flex-wrap items-center gap-1">
+        <Btn variant="outline" className="h-8 px-2" title="Deshacer (Ctrl+Z)" disabled={!st.past.length} onClick={undo}><Undo2 size={16} /> <span className="hidden sm:inline">Deshacer</span></Btn>
+        <Btn variant="outline" className="h-8 px-2" title="Rehacer (Ctrl+Y)" disabled={!st.future.length} onClick={redo}><Redo2 size={16} /> <span className="hidden sm:inline">Rehacer</span></Btn>
+        <Btn variant="ghost" className="h-8 px-2" onClick={() => zoom(1.25)} title="Acercar"><ZoomIn size={16} /></Btn>
+        <Btn variant="ghost" className="h-8 px-2" onClick={() => zoom(0.8)} title="Alejar"><ZoomOut size={16} /></Btn>
+        <Btn variant="ghost" className="h-8 px-2 text-xs" onClick={fit}>Encuadrar</Btn>
+      </div>}>
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        <label className="flex items-center gap-1">Grilla
+          <select className="rounded border border-input bg-background px-1" value={snap} onChange={(e) => setSnap(Number(e.target.value))}>
+            <option value={0}>sin ajuste</option><option value={10}>10 mm</option><option value={100}>100 mm</option><option value={250}>250 mm</option><option value={500}>500 mm</option>
+          </select></label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />Ver grilla</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />Etiquetas</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={showDims} onChange={(e) => setShowDims(e.target.checked)} />Cotas</label>
+        <span className="text-muted-foreground">Arrastrá pantallas · arrastrá el fondo para desplazar</span>
+      </div>
+      <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} className="aspect-[1000/560] w-full touch-none rounded-lg border border-border bg-muted"
+        onPointerDown={(e) => onDown(e)} onPointerMove={onMove} onPointerUp={onUp}
+        onWheel={(e) => zoom(e.deltaY < 0 ? 1.1 : 0.9)}>
+        <g transform={`scale(${view.k}) translate(${-view.x} ${-view.y})`}>
+          {gxs.map((x) => <line key={"x" + x} x1={x} y1={view.y} x2={x} y2={view.y + vh / view.k} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
+          {gys.map((y) => <line key={"y" + y} x1={view.x} y1={y} x2={view.x + vw / view.k} y2={y} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
+          <path d={`M${-fs * 2} 0H${fs * 2}M0 ${-fs * 2}V${fs * 2}`} stroke="#E5484D" strokeWidth={2 / view.k} />
+          {p.screens.map((s, i) => {
+            const t = screenStats(s, lookup);
+            const pos = live?.id === s.id ? live : s;
+            return (
+              <g key={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
+                <rect x={pos.x} y={pos.y} width={t.widthMm} height={t.heightMm} fill={TYPE_COLORS[i % TYPE_COLORS.length]} fillOpacity={0.85}
+                  stroke={s.id === selected ? "#E5484D" : "#0B1B2B"} strokeWidth={(s.id === selected ? 3 : 1) / view.k} />
+                {showLabels && <text x={pos.x + t.widthMm / 2} y={pos.y + t.heightMm / 2} fontSize={fs} fill="#fff" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
+                {showDims && <text x={pos.x} y={pos.y - fs * 0.4} fontSize={fs * 0.8} fill="currentColor" className="text-foreground" pointerEvents="none">{fmtM(t.widthMm)} × {fmtM(t.heightMm)} @ ({fmtM(pos.x)}, {fmtM(pos.y)})</text>}
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <select className={inputCls + " w-auto"} value="" onChange={(e) => e.target.value && addScreen(e.target.value as ScreenKind)}>
+          <option value="">+ Agregar pantalla…</option>{KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+        </select>
+        <Btn variant="outline" onClick={() => align("left")}>Alinear izq.</Btn>
+        <Btn variant="outline" onClick={() => align("top")}>Alinear arriba</Btn>
+        <Btn variant="outline" onClick={() => align("distH")} disabled={p.screens.length < 3}>Distribuir H</Btn>
+      </div>
+      {sel && (
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted p-2 sm:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_auto]">
+          <Field label="Nombre" className="col-span-2 sm:col-span-1"><input className={inputCls} value={sel.name} onChange={(e) => mod(sel.id, (s) => { s.name = e.target.value; })} /></Field>
+          <Field label="Tipo"><select className={inputCls} value={sel.kind} onChange={(e) => mod(sel.id, (s) => { s.kind = e.target.value as ScreenKind; })}>{KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</select></Field>
+          <Field label="X mm"><Num value={sel.x} onChange={(v) => mod(sel.id, (s) => { s.x = Math.round(v ?? 0); })} /></Field>
+          <Field label="Y mm"><Num value={sel.y} onChange={(v) => mod(sel.id, (s) => { s.y = Math.round(v ?? 0); })} /></Field>
+          <div className="col-span-2 flex items-end gap-1 sm:col-span-1">
+            <Btn variant="outline" title="Duplicar" onClick={() => { const c = structuredClone(sel); c.id = uid(); c.name += " (copia)"; c.x += 1000; c.cabinets.forEach((k) => (k.id = uid())); update((pr) => { pr.screens.push(c); return pr; }); onSelect(c.id); }}><Plus size={14} /><Copy size={14} /></Btn>
+            <Btn variant="danger" title="Eliminar" disabled={p.screens.length < 2} onClick={() => { update((pr) => { pr.screens = pr.screens.filter((x) => x.id !== sel.id); return pr; }); onSelect(p.screens.find((x) => x.id !== sel.id)!.id); }}><Trash2 size={14} /></Btn>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
