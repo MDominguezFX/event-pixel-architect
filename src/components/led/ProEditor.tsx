@@ -11,6 +11,7 @@ const KINDS: { id: ScreenKind; label: string }[] = [
   { id: "principal", label: "Principal" }, { id: "lateral", label: "Lateral" }, { id: "totem", label: "Tótem" },
   { id: "banner", label: "Banner / cenefa" }, { id: "cabina", label: "Frente cabina DJ" }, { id: "arco", label: "Arco / cilindro" }, { id: "libre", label: "Libre" },
 ];
+const SCREEN_FILLS = ["fill-scene-1", "fill-scene-2", "fill-scene-3", "fill-scene-4", "fill-scene-5", "fill-scene-6"];
 
 export function ProEditor({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
   const st = useStore();
@@ -156,9 +157,9 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
             const pos = live?.id === s.id ? live : s;
             return (
               <g key={s.id} data-screen={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
-                <rect x={pos.x} y={pos.y} width={t.widthMm} height={t.heightMm} className={s.id === selected ? "fill-primary stroke-accent" : "fill-deep stroke-primary"} fillOpacity={0.9}
+                <rect x={pos.x} y={pos.y} width={t.widthMm} height={t.heightMm} className={`${SCREEN_FILLS[i % SCREEN_FILLS.length]} ${s.id === selected ? "stroke-accent" : "stroke-foreground"}`} fillOpacity={0.9}
                   strokeWidth={(s.id === selected ? 3 : 1) / view.k} />
-                {showLabels && <text x={pos.x + t.widthMm / 2} y={pos.y + t.heightMm / 2} fontSize={fs} className="fill-primary-foreground" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
+                {showLabels && <text x={pos.x + t.widthMm / 2} y={pos.y + t.heightMm / 2} fontSize={fs} className="fill-scene-label" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
                 {showDims && <text x={pos.x} y={pos.y - fs * 0.4} fontSize={fs * 0.8} fill="currentColor" className="text-foreground" pointerEvents="none">{fmtM(t.widthMm)} × {fmtM(t.heightMm)} @ ({fmtM(pos.x)}, {fmtM(pos.y)})</text>}
               </g>
             );
