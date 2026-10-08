@@ -8,6 +8,7 @@ import { frontPlan, topPlan, wiringPlan } from "@/lib/led/plan";
 import { cableRuns } from "@/lib/led/cabling";
 import { allPanels, update, useStore } from "@/lib/led/store";
 import { cabDims } from "@/lib/led/engine";
+import { rotateGroup } from "@/lib/led/edit";
 import { PlanView } from "./PlanView";
 import { Btn, Card, Field, inputCls, Notice, Num, Stat } from "./ui";
 
@@ -35,6 +36,12 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
   const [tool, setTool] = useState<"intercambiar" | "agregar" | "quitar" | "girar">("agregar");
   const [addPanelId, setAddPanelId] = useState("");
   const [editMsg, setEditMsg] = useState<string | null>(null);
+  const [pick, setPick] = useState<Set<string>>(new Set());
+  const rotatePick = (ids: Set<string>) => {
+    const next = rotateGroup(screen.cabinets, ids, lookup);
+    if (!next) return setEditMsg("Girado se superpone con otros gabinetes: mové o quitá los que estorban, o elegí otro grupo.");
+    setEditMsg(null); mod((s) => { s.cabinets = next; });
+  };
   const [band, setBand] = useState<"arriba" | "abajo">("arriba");
 
   const mod = (fn: (s: Screen) => void) => update((p) => { const s = p.screens.find((x) => x.id === screen.id)!; fn(s); return p; });
@@ -77,10 +84,8 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
       return mod((s) => { s.cabinets = s.cabinets.filter((k) => k.id !== c.id); normalize(s); });
     }
     if (tool === "girar") {
-      const pn = lookup(c.panelId)!; const nb = { ...box(c), w: box(c).h, h: box(c).w };
-      if (screen.cabinets.some((k) => k.id !== c.id && hits(box(k), nb))) return setEditMsg(`${pn.name}: girado se superpone con otro gabinete.`);
       setEditMsg(null);
-      return mod((s) => { const k = s.cabinets.find((q) => q.id === c.id); if (k) k.rotated = !k.rotated; });
+      return setPick((prev) => { const n = new Set(prev); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; });
     }
     if (!isMix || !small || !large) return setEditMsg("Intercambiar formatos funciona en pantallas mixtas compatibles (ver Mezcla).");
     mod((s) => { s.cabinets = c.panelId === large.id ? splitLarge(s.cabinets, c.id, small) : mergeSmall(s.cabinets, c.id, small, large); });
@@ -245,6 +250,12 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
               {([["agregar", "＋ Agregar"], ["quitar", "− Quitar"], ["girar", "↻ Girar"], ["intercambiar", "⇄ Intercambiar"]] as const).map(([k, l]) => (
                 <Btn key={k} className="h-7 px-2 text-xs" variant={tool === k ? "default" : "outline"} onClick={() => { setTool(k); setEditMsg(null); }}>{l}</Btn>
               ))}
+              {tool === "girar" && <>
+                <Btn className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => rotatePick(pick)}>↻ Girar {pick.size === 1 ? "panel" : `grupo (${pick.size})`}</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => rotatePick(new Set(screen.cabinets.map((k) => k.id)))}>↻ Girar pantalla completa</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => setPick(new Set(screen.cabinets.map((k) => k.id)))}>Seleccionar todos</Btn>
+                <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => setPick(new Set())}>Limpiar</Btn>
+              </>}
               {tool === "agregar" && <select className="h-7 max-w-[180px] rounded border border-input bg-background px-1" value={addPanelId || panel.id} onChange={(e) => setAddPanelId(e.target.value)}>
                 {[...new Set([panel.id, ...stats.types.map((t) => t.panel.id), smallId, largeId])].map((id) => lookup(id)).filter((x): x is Panel => !!x).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select>}
@@ -254,12 +265,12 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
                 <Btn variant="outline" className="h-7 px-2 text-xs" title="Agregar fila abajo" onClick={() => edge("row", true)}>+ Fila</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" title="Quitar última fila" onClick={() => edge("row", false)}>− Fila</Btn>
               </span>
-              <p className="w-full text-muted-foreground">{tool === "agregar" ? "Clic en un espacio vacío junto a la pantalla para sumar un gabinete." : tool === "quitar" ? "Clic en un gabinete para quitarlo." : tool === "girar" ? "Clic en un gabinete para girarlo 90°." : "Clic en un gabinete grande para dividirlo en dos chicos, o en uno chico para unirlo."}</p>
+              <p className="w-full text-muted-foreground">{tool === "agregar" ? "Clic en un espacio vacío junto a la pantalla para sumar un gabinete." : tool === "quitar" ? "Clic en un gabinete para quitarlo." : tool === "girar" ? "Clic en uno o varios gabinetes para seleccionarlos (borde naranja) y después Girar: un panel gira en su lugar, un grupo gira 90° como bloque." : "Clic en un gabinete grande para dividirlo en dos chicos, o en uno chico para unirlo."}</p>
             </div>
           )}
           {editMsg && !showWiring && <div className="mb-2"><Notice>{editMsg}</Notice></div>}
           {showWiring && wiring.errors.map((e) => <Notice key={e} kind="error">{e}</Notice>)}
-          <PlanView plan={showWiring ? wp : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={showWiring ? undefined : onPlanClick} />
+          <PlanView plan={showWiring ? wp : tool === "girar" && pick.size ? { ...fp, prims: [...fp.prims, ...screen.cabinets.filter((k) => pick.has(k.id)).map((k) => { const b = box(k); return { t: "rect" as const, x: b.x, y: b.y, w: b.w, h: b.h, stroke: "#F5A524", lw: Math.min(b.w, b.h) * 0.06 }; })] } : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={showWiring ? undefined : onPlanClick} />
           {tp && !showWiring && <div className="mt-4 border-t border-border pt-3"><p className="mb-1 text-xs font-bold text-muted-foreground">Vista superior (esquema)</p><PlanView plan={tp} className="h-auto max-h-[45vh] w-full" /></div>}
         </Card>
       </div>

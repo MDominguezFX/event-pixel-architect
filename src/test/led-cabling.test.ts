@@ -57,3 +57,22 @@ describe("slices, Arena y puertos", () => {
     expect(new Set([1, 2, 3, 4, 5].map(portColor)).size).toBe(5);
   });
 });
+
+import { rotateGroup } from "@/lib/led/edit";
+describe("girar paneles", () => {
+  const P = BUILTIN_PANELS.find((p) => p.widthMm === 500 && p.heightMm === 1000)!;
+  const lk = (id: string) => BUILTIN_PANELS.find((p) => p.id === id);
+  it("un panel solo gira en su lugar", () => {
+    const r = rotateGroup([{ id: "a", panelId: P.id, x: 0, y: 0, rotated: false }], new Set(["a"]), lk)!;
+    expect(r[0]).toMatchObject({ rotated: true, x: 0, y: 0 });
+  });
+  it("un grupo 2×1 gira como bloque a 1×2", () => {
+    const cabs = [{ id: "a", panelId: P.id, x: 0, y: 0, rotated: false }, { id: "b", panelId: P.id, x: 500, y: 0, rotated: false }];
+    const r = rotateGroup(cabs, new Set(["a", "b"]), lk)!;
+    expect(r.map((c) => [c.x, c.y, c.rotated])).toEqual([[0, 0, true], [0, 500, true]]);
+  });
+  it("bloquea si se superpone", () => {
+    const cabs = [{ id: "a", panelId: P.id, x: 0, y: 0, rotated: false }, { id: "b", panelId: P.id, x: 500, y: 0, rotated: false }];
+    expect(rotateGroup(cabs, new Set(["a"]), lk)).toBeNull();
+  });
+});
