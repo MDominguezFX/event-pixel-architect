@@ -35,7 +35,6 @@ describe("650.000 píxeles por cable", () => {
 import { outputQuad, rotateSlice } from "@/lib/led/mapping";
 import { generateArenaXml } from "@/lib/led/resolume";
 import { newProject } from "@/lib/led/model";
-import { BUILTIN_PANELS } from "@/lib/led/catalog";
 import { portColor } from "@/lib/led/plan";
 
 describe("slices, Arena y puertos", () => {
