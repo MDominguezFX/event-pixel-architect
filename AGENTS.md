@@ -19,3 +19,4 @@
 - Data cable planning is a pure module grouping whole cabinets in configured numbering order; wiring vector plans color cabinets per data port (portColor) and share screen-index colors with the scene and document renderers — native pixel loads and exported paths stay consistent.
 - PDF export is section-driven (PdfOpts.sections + screenIds) chosen in an export dialog — avoids dumping every page by default.
 - Free-angle rotation is schematic: Cabinet.angleDeg and Slice.rotation (degrees, about the box center) never change native pixels; 90° cabinet turns still use the rotated flag so resolution swaps stay exact.
+- The 3D view is derived by the pure scene3d module from the same Project (curves wrap the developed view on the radius from geometry.ts) and is lazy-loaded client-only — three.js never runs during SSR.

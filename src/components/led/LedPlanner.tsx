@@ -6,6 +6,7 @@ import { BUILTIN_PANELS, type Panel } from "@/lib/led/catalog";
 import { exportJson, download } from "@/lib/led/exporters";
 import { ExportDialog } from "./ExportDialog";
 import { WiringPanel } from "./WiringPanel";
+import { View3DCard } from "./View3DCard";
 import { newProject, uid, type Project } from "@/lib/led/model";
 import { deleteProject, loadAll, validateProject } from "@/lib/led/persistence";
 import { allPanels, initStore, setCustomPanels, setProject, update, useStore } from "@/lib/led/store";
@@ -126,13 +127,14 @@ export function LedPlanner() {
 
         {(!pro || tab === "diseño") && (
           <>
-            {pro && <ProEditor selected={screen.id} onSelect={setSel} />}
+            {pro && <div className="grid gap-3 xl:grid-cols-2"><ProEditor selected={screen.id} onSelect={setSel} /><View3DCard selected={screen.id} dark={dark} /></div>}
             {pro && p.screens.length > 1 && (
               <div className="flex gap-1 overflow-x-auto">
                 {p.screens.map((s) => <button key={s.id} onClick={() => setSel(s.id)} className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${s.id === screen.id ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{s.name}</button>)}
               </div>
             )}
             <ScreenConfig screen={screen} dark={dark} onNewPanel={() => setPanelDlg({ open: true })} />
+            {!pro && <View3DCard selected={screen.id} dark={dark} />}
           </>
         )}
         {pro && tab === "cableado" && p.screens.length > 1 && (
