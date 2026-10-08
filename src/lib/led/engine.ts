@@ -127,7 +127,7 @@ function hasOverlaps(s: Screen, lookup: PanelLookup) {
 }
 
 /** Numeración por filas, columnas o serpentina con esquina inicial configurable. */
-export function numberCabinets(s: Screen, lookup: PanelLookup): Map<string, number> {
+export function numberCabinets(s: Screen, lookup: PanelLookup, axis?: "cx" | "cy"): Map<string, number> {
   const { order, start } = s.numbering;
   const items = s.cabinets.map((c) => {
     const d = cabDims(c, lookup(c.panelId)!);
@@ -136,7 +136,7 @@ export function numberCabinets(s: Screen, lookup: PanelLookup): Map<string, numb
   const flipX = start === "tr" || start === "br";
   const flipY = start === "bl" || start === "br";
   const key = (v: number) => Math.round(v);
-  const primary = order === "columnas" || order === "serpentina" ? "cx" : "cy";
+  const primary = axis ?? (order === "columnas" || order === "serpentina" ? "cx" : "cy");
   const secondary = primary === "cx" ? "cy" : "cx";
   const sgn = (k: "cx" | "cy") => ((k === "cx" ? flipX : flipY) ? -1 : 1);
   // agrupar por línea primaria
