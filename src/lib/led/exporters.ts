@@ -91,7 +91,7 @@ export function pdfPageCount(project: Project, lookup: PanelLookup, o: PdfOpts, 
   const screens = project.screens.filter((s) => !o.screenIds || o.screenIds.includes(s.id));
   let n = sec.has("layout") && project.screens.length > 1 ? 1 : 0;
   for (const s of screens) n += (sec.has("frontal") ? 1 : 0) + (sec.has("cableado") ? 1 : 0) + (sec.has("datos") ? 1 : 0) + (sec.has("superior") && s.geometry.type !== "plana" && topPlan(s, lookup, { dims: true, numbers: true, ink: "#000", muted: "#000" }) ? 1 : 0);
-  if (pro && sec.has("slices") && project.mapping.slices.length) n += Math.ceil(project.mapping.slices.length / 50);
+  if (pro && sec.has("slices") && project.mapping.slices.length) n += Math.ceil(project.mapping.slices.length / 35);
   return n;
 }
 
