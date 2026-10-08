@@ -5,6 +5,7 @@ import { Copy, Redo2, Trash2, Undo2, ZoomIn, ZoomOut, Plus } from "lucide-react"
 import { screenStats, fmtM } from "@/lib/led/engine";
 import { newScreen, uid, type Screen, type ScreenKind } from "@/lib/led/model";
 import { allPanels, redo, undo, update, useStore } from "@/lib/led/store";
+import { scene2d, sceneBounds, sceneDrag, sceneOffset, type SceneView } from "@/lib/led/scene2d";
 import { Btn, Card, Field, inputCls, Num } from "./ui";
 
 const KINDS: { id: ScreenKind; label: string }[] = [
@@ -23,6 +24,8 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
   const [showGrid, setShowGrid] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showDims, setShowDims] = useState(true);
+  const [projection, setProjection] = useState<SceneView>("espacial");
+  const scene = scene2d(p, lookup, projection);
   const drag = useRef<{ id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -67,7 +70,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
   const scale = () => { const r = svgRef.current?.getBoundingClientRect(); return r?.width ? vw / r.width / view.k : 0; };
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current; if (!d) return;
-    const dx = (e.clientX - d.sx) * scale(), dy = (e.clientY - d.sy) * scale();
+    const { x: dx, y: dy } = sceneDrag((e.clientX - d.sx) * scale(), (e.clientY - d.sy) * scale(), projection);
     d.moved = true;
     if (d.id) setLive({ id: d.id, x: sn(d.ox + dx), y: sn(d.oy + dy) });
     else setView((v) => ({ ...v, x: d.ox - dx, y: d.oy - dy }));
@@ -81,13 +84,12 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     if (svgRef.current && zoomRef.current) select(svgRef.current).call(zoomRef.current.scaleBy, f);
   };
   const fit = () => {
-    let a = 0, b = 0, c = 1000, d = 1000;
-    p.screens.forEach((s) => { const t = screenStats(s, lookup); a = Math.min(a, s.x); b = Math.min(b, s.y); c = Math.max(c, s.x + t.widthMm); d = Math.max(d, s.y + t.heightMm); });
-    const k = Math.max(0.005, Math.min(1, Math.min(vw / (c - a), vh / (d - b)) * 0.85));
-    const x = a - (vw / k - (c - a)) / 2, y = b - (vh / k - (d - b)) / 2;
+    const bounds = sceneBounds(scene);
+    const k = Math.max(0.005, Math.min(1, Math.min(vw / Math.max(1, bounds.w), vh / Math.max(1, bounds.h)) * 0.78));
+    const x = bounds.x - (vw / k - bounds.w) / 2, y = bounds.y - (vh / k - bounds.h) / 2;
     if (svgRef.current && zoomRef.current) select(svgRef.current).call(zoomRef.current.transform, zoomIdentity.translate(-x * k, -y * k).scale(k));
   };
-  useEffect(fit, [p.screens.length]);
+  useEffect(fit, [p.screens.length, projection]);
 
   const align = (mode: "left" | "top" | "distH") => update((pr) => {
     const ss = pr.screens;
@@ -138,6 +140,10 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
         <Btn variant="ghost" className="h-8 px-2 text-xs" onClick={fit}>Encuadrar</Btn>
       </div>}>
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Vista del plano 2D">
+          {([['espacial', 'Espacial'], ['frontal', 'Frontal'], ['desarrollada', 'Desarrollada']] as const).map(([id, label]) =>
+            <Btn key={id} variant={projection === id ? "primary" : "outline"} className="h-8 px-2 text-xs" aria-pressed={projection === id} onClick={() => setProjection(id)}>{label}</Btn>)}
+        </div>
         <label className="flex items-center gap-1">Grilla
           <select className="rounded border border-input bg-background px-1" value={snap} onChange={(e) => setSnap(Number(e.target.value))}>
             <option value={0}>sin ajuste</option><option value={10}>10 mm</option><option value={100}>100 mm</option><option value={250}>250 mm</option><option value={500}>500 mm</option>
@@ -155,12 +161,18 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
           {p.screens.map((s, i) => {
             const t = screenStats(s, lookup);
             const pos = live?.id === s.id ? live : s;
+            const cabinets = scene.filter((c) => c.screenId === s.id);
+            const bounds = sceneBounds(cabinets);
+            const offset = sceneOffset(pos.x - s.x, pos.y - s.y, projection);
             return (
-              <g key={s.id} data-screen={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
-                <rect x={pos.x} y={pos.y} width={t.widthMm} height={t.heightMm} className={`${SCREEN_FILLS[i % SCREEN_FILLS.length]} ${s.id === selected ? "stroke-accent" : "stroke-foreground"}`} fillOpacity={0.9}
-                  strokeWidth={(s.id === selected ? 3 : 1) / view.k} />
-                {showLabels && <text x={pos.x + t.widthMm / 2} y={pos.y + t.heightMm / 2} fontSize={fs} className="fill-scene-label" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
-                {showDims && <text x={pos.x} y={pos.y - fs * 0.4} fontSize={fs * 0.8} fill="currentColor" className="text-foreground" pointerEvents="none">{fmtM(t.widthMm)} × {fmtM(t.heightMm)} @ ({fmtM(pos.x)}, {fmtM(pos.y)})</text>}
+              <g key={s.id} data-screen={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move" transform={`translate(${offset.x} ${offset.y})`}>
+                {cabinets.map((c) => <g key={c.id} data-cabinet={c.id}>
+                  {c.faces.map((face, j) => <polygon key={j} points={face.map((q) => `${q.x},${q.y}`).join(' ')}
+                    className={`${SCREEN_FILLS[i % SCREEN_FILLS.length]} ${s.id === selected ? "stroke-accent" : "stroke-foreground"}`}
+                    fillOpacity={0.9} strokeWidth={(s.id === selected ? 1.5 : 0.8) / view.k} />)}
+                </g>)}
+                {showLabels && <text x={bounds.x + bounds.w / 2} y={bounds.y - fs * 1.7} fontSize={fs} className="fill-foreground" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
+                {showDims && <text x={bounds.x + bounds.w / 2} y={bounds.y - fs * 0.4} textAnchor="middle" fontSize={fs * 0.8} fill="currentColor" className="text-foreground" pointerEvents="none">{fmtM(t.widthMm)} × {fmtM(t.heightMm)}</text>}
               </g>
             );
           })}

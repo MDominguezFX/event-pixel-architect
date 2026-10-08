@@ -11,5 +11,6 @@
 - [x] Estabilizar y comprobar zoom del editor 2D Pro
 - [x] Distinguir pantallas por color y agregar plano descargable de cableado (máximo 650.000 píxeles por cable)
 - [ ] Probar XML en Arena real (bloqueado: falta preset exportado por tu versión de Arena)
-- Vista 3D esquemática: fuera del alcance actual (opcional)
+- [x] Vista 3D esquemática integrada
 - [x] Optimizar cableado automáticamente (menos puertos)
+- [ ] Mostrar en el editor 2D los mismos gabinetes y formas que en 3D
