@@ -7,8 +7,8 @@
 - [x] Tests, README despliegue subdominio/subruta
 - [x] Pie: Desarrollado por Start Solution, logos e Instagram
 - [x] Optimización móvil y pie en pantallas chicas
-- [ ] Concentrar logos y unificar presentación tecnológica
-- [ ] Estabilizar y comprobar zoom del editor 2D Pro
-- [ ] Distinguir pantallas por color y agregar plano descargable de cableado (máximo 650.000 píxeles por cable)
+- [x] Concentrar logos y unificar presentación tecnológica
+- [x] Estabilizar y comprobar zoom del editor 2D Pro
+- [x] Distinguir pantallas por color y agregar plano descargable de cableado (máximo 650.000 píxeles por cable)
 - [ ] Probar XML en Arena real (bloqueado: falta preset exportado por tu versión de Arena)
-- [ ] Vista 3D esquemática (opcional)
+- Vista 3D esquemática: fuera del alcance actual (opcional)
