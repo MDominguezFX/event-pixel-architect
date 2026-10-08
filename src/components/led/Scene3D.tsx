@@ -24,7 +24,7 @@ export default function Scene3D({ selected, dark }: { selected?: string; dark: b
   const bg = dark ? "#0b1622" : "#eef3f8";
 
   return (
-    <Canvas dpr={[1, 2]} camera={{ position: [bounds.cx + d * 0.35, bounds.top * 0.8 + d * 0.35, bounds.cz + d], fov: 45, near: 0.05, far: 1000 }}>
+    <Canvas key={st.project.screens.length} dpr={[1, 2]} camera={{ position: [bounds.cx + d * 0.35, bounds.top * 0.8 + d * 0.35, bounds.cz + d], fov: 45, near: 0.05, far: 1000 }}>
       <color attach="background" args={[bg]} />
       <hemisphereLight args={["#ffffff", "#6b7c8f", 0.9]} />
       <directionalLight position={[5, 10, 8]} intensity={1.1} />
