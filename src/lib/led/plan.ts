@@ -4,7 +4,8 @@ import { realPitch } from "./catalog";
 import { cabDims, numberCabinets, screenStats, fmtM, type PanelLookup } from "./engine";
 import { computeCurve } from "./geometry";
 import type { Project, Screen } from "./model";
-import { cableRuns, cablePath, CABLING_NOTE } from "./cabling";
+import { cableRuns, cablePath, CABLING_NOTE, screenFrame } from "./cabling";
+export { screenAngle, screenFrame } from "./cabling";
 
 export type Prim =
   | { t: "rect"; x: number; y: number; w: number; h: number; fill?: string; stroke?: string; lw?: number; hatch?: boolean; rot?: number }
@@ -34,29 +35,6 @@ function dimV(p: Prim[], y1: number, y2: number, x: number, label: string, fs: n
   p.push({ t: "line", x1: x - fs * 0.4, y1, x2: x + fs * 0.4, y2: y1, stroke: o.ink, lw: fs * 0.06 });
   p.push({ t: "line", x1: x - fs * 0.4, y1: y2, x2: x + fs * 0.4, y2, stroke: o.ink, lw: fs * 0.06 });
   p.push({ t: "text", x: x - fs * 0.35, y: (y1 + y2) / 2, s: label, size: fs, color: o.ink, align: "center", rot: -90 });
-}
-
-/** Common free angle of a whole rotated screen (all cabinets share it), else 0. */
-export function screenAngle(s: Screen): number {
-  const a = s.cabinets[0]?.angleDeg ?? 0;
-  return a && s.cabinets.every((c) => (c.angleDeg ?? 0) === a) ? a : 0;
-}
-
-/** The screen expressed in its own unrotated frame plus the pivot to rotate drawings back. */
-export function screenFrame(s: Screen, lookup: PanelLookup) {
-  const angle = screenAngle(s);
-  if (!angle) return { local: s, angle: 0, cx: 0, cy: 0 };
-  let cx = 0, cy = 0, n = 0;
-  for (const c of s.cabinets) { const p = lookup(c.panelId); if (!p) continue; const d = cabDims(c, p); cx += c.x + d.w / 2; cy += c.y + d.h / 2; n++; }
-  cx /= n || 1; cy /= n || 1;
-  const r = (-angle * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
-  const cabinets = s.cabinets.map((c) => {
-    const p = lookup(c.panelId); const d = p ? cabDims(c, p) : { w: 0, h: 0 };
-    const px = c.x + d.w / 2 - cx, py = c.y + d.h / 2 - cy;
-    return { ...c, angleDeg: undefined, x: Math.round(cx + px * co - py * si - d.w / 2), y: Math.round(cy + px * si + py * co - d.h / 2) };
-  });
-  const mx = Math.min(...cabinets.map((c) => c.x)), my = Math.min(...cabinets.map((c) => c.y));
-  return { local: { ...s, cabinets: cabinets.map((c) => ({ ...c, x: c.x - mx, y: c.y - my })) }, angle, cx: cx - mx, cy: cy - my };
 }
 
 /** Rotate drawing primitives about a pivot (clockwise in plan coordinates, y down). */
