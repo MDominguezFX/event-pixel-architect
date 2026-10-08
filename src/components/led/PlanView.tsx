@@ -17,7 +17,7 @@ export function PlanView({ plan, className, onCabinetClick }: { plan: Plan; clas
       </defs>
       {plan.prims.map((p, i) => {
         if (p.t === "rect") return (
-          <g key={i}>
+          <g key={i} transform={p.rot ? `rotate(${p.rot} ${p.x + p.w / 2} ${p.y + p.h / 2})` : undefined}>
             <rect x={p.x} y={p.y} width={p.w} height={p.h} fill={p.fill ?? "none"} stroke={p.stroke} strokeWidth={p.lw} />
             {p.hatch && <rect x={p.x} y={p.y} width={p.w} height={p.h} fill="url(#hatch)" pointerEvents="none" />}
           </g>

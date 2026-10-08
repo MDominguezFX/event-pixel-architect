@@ -7,7 +7,7 @@ import type { Project, Screen } from "./model";
 import { cableRuns, CABLING_NOTE } from "./cabling";
 
 export type Prim =
-  | { t: "rect"; x: number; y: number; w: number; h: number; fill?: string; stroke?: string; lw?: number; hatch?: boolean }
+  | { t: "rect"; x: number; y: number; w: number; h: number; fill?: string; stroke?: string; lw?: number; hatch?: boolean; rot?: number }
   | { t: "line"; x1: number; y1: number; x2: number; y2: number; stroke: string; lw: number; dash?: boolean }
   | { t: "poly"; pts: { x: number; y: number }[]; stroke: string; lw: number; closed?: boolean; fill?: string }
   | { t: "text"; x: number; y: number; s: string; size: number; color: string; align?: "left" | "center" | "right"; bold?: boolean; rot?: number };
@@ -59,11 +59,12 @@ export function frontPlan(s: Screen, lookup: PanelLookup, o: PlanOpts): Plan {
     const d = cabDims(c, p);
     xs.add(c.x + d.w); ys.add(c.y + d.h);
     const col = colors.get(c.panelId + (c.rotated ? "@r" : ""))!;
-    prims.push({ t: "rect", x: c.x, y: c.y, w: d.w, h: d.h, fill: col, stroke: o.ink, lw: fs * 0.05, hatch: [...colors.keys()].indexOf(c.panelId + (c.rotated ? "@r" : "")) % 2 === 1 });
+    prims.push({ t: "rect", x: c.x, y: c.y, w: d.w, h: d.h, fill: col, stroke: o.ink, lw: fs * 0.05, hatch: [...colors.keys()].indexOf(c.panelId + (c.rotated ? "@r" : "")) % 2 === 1, rot: c.angleDeg || undefined });
     if (o.numbers) {
       const n = nums.get(c.id) ?? 0;
       const ts = Math.min(d.w, d.h) / 4;
       prims.push({ t: "text", x: c.x + d.w / 2, y: c.y + d.h / 2 + ts * 0.35, s: String(n), size: ts, color: "#ffffff", align: "center", bold: true });
+      if (c.angleDeg) prims.push({ t: "text", x: c.x + d.w / 2, y: c.y + d.h / 2 + ts * 1.2, s: `${c.angleDeg}°`, size: ts * 0.5, color: "#ffffff", align: "center" });
     }
   }
   if (o.dims) {
@@ -169,7 +170,7 @@ export function wiringPlan(s: Screen, lookup: PanelLookup, o: PlanOpts, index = 
     minX = Math.min(minX, c.x); minY = Math.min(minY, c.y);
     maxX = Math.max(maxX, c.x + d.w); maxY = Math.max(maxY, c.y + d.h);
     const port = portOf.get(c.id);
-    prims.push({ t: "rect", x: c.x, y: c.y, w: d.w, h: d.h, fill: port ? portColor(port) : color, stroke: o.ink, lw: fs * 0.05 });
+    prims.push({ t: "rect", x: c.x, y: c.y, w: d.w, h: d.h, fill: port ? portColor(port) : color, stroke: o.ink, lw: fs * 0.05, rot: c.angleDeg || undefined });
   }
   for (const run of runs) {
     const centers = run.cabinets.flatMap((c) => {

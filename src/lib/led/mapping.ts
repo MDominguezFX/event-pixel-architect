@@ -29,21 +29,33 @@ export function slicesByCabinet(p: Project, lookup: PanelLookup): Slice[] {
   return out;
 }
 
-/** Output size the input occupies once rotated: 90/270 swap width and height. */
-export const rotatedSize = (s: Slice): [number, number] => ((s.rotation ?? 0) % 180 ? [s.output.h, s.output.w] : [s.output.w, s.output.h]);
+export const normDeg = (d: number) => Math.round((((d % 360) + 360) % 360) * 100) / 100;
+const rot = (x: number, y: number, cx: number, cy: number, deg: number) => {
+  const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  return { x: Math.round((cx + (x - cx) * c - (y - cy) * s) * 100) / 100, y: Math.round((cy + (x - cx) * s + (y - cy) * c) * 100) / 100 };
+};
 
-/** Output quad corners in the order of the input's TL, TR, BR, BL (clockwise rotation cycles corners). */
+/** Output quad corners (input TL, TR, BR, BL) after rotating the output box about its center. */
 export function outputQuad(s: Slice): { x: number; y: number }[] {
-  const r = s.output;
-  const c = [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }];
-  const k = ((s.rotation ?? 0) / 90) % 4;
-  return [0, 1, 2, 3].map((i) => c[(i + k) % 4]!);
+  const r = s.output, cx = r.x + r.w / 2, cy = r.y + r.h / 2, a = s.rotation ?? 0;
+  return [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]].map(([x, y]) => (a ? rot(x!, y!, cx, cy, a) : { x: x!, y: y! }));
 }
 
-/** Rotate a slice 90° clockwise keeping its output top-left, swapping the output box. */
-export function rotateSlice(s: Slice): Slice {
-  return { ...s, rotation: (((s.rotation ?? 0) + 90) % 360) as Slice["rotation"], output: { ...s.output, w: s.output.h, h: s.output.w } };
+/** Rotate selected slices by delta degrees: one slice spins in place, a group spins around its common center. */
+export function rotateSlices(slices: Slice[], ids: Set<string>, delta: number): Slice[] {
+  const sel = slices.filter((s) => ids.has(s.id));
+  if (!sel.length) return slices;
+  const cx = sel.reduce((a, s) => a + s.output.x + s.output.w / 2, 0) / sel.length;
+  const cy = sel.reduce((a, s) => a + s.output.y + s.output.h / 2, 0) / sel.length;
+  return slices.map((s) => {
+    if (!ids.has(s.id)) return s;
+    const c = rot(s.output.x + s.output.w / 2, s.output.y + s.output.h / 2, cx, cy, delta);
+    return { ...s, rotation: normDeg((s.rotation ?? 0) + delta), output: { ...s.output, x: Math.round(c.x - s.output.w / 2), y: Math.round(c.y - s.output.h / 2) } };
+  });
 }
+
+/** Rotate a single slice by delta degrees (default 90) in place. */
+export const rotateSlice = (s: Slice, delta = 90): Slice => ({ ...s, rotation: normDeg((s.rotation ?? 0) + delta) });
 
 const inter = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -55,9 +67,8 @@ export function mappingWarnings(p: Project): string[] {
     if (s.input.x < 0 || s.input.y < 0 || s.input.x + s.input.w > m.canvasW || s.input.y + s.input.h > m.canvasH) w.push(`${s.name}: la entrada sale del canvas (${m.canvasW}×${m.canvasH}).`);
     const o = m.outputs[s.outputIndex];
     if (!o) w.push(`${s.name}: salida asignada inexistente.`);
-    else if (s.output.x < 0 || s.output.y < 0 || s.output.x + s.output.w > o.w || s.output.y + s.output.h > o.h) w.push(`${s.name}: la salida excede ${o.name} (${o.w}×${o.h}).`);
-    const [ew, eh] = rotatedSize(s);
-    if (s.input.w !== ew || s.input.h !== eh) w.push(`${s.name}: escalado ${s.input.w}×${s.input.h} → ${s.output.w}×${s.output.h}.`);
+    else if (outputQuad(s).some((q) => q.x < -0.01 || q.y < -0.01 || q.x > o.w + 0.01 || q.y > o.h + 0.01)) w.push(`${s.name}: la salida excede ${o.name} (${o.w}×${o.h}).`);
+    if (s.input.w !== s.output.w || s.input.h !== s.output.h) w.push(`${s.name}: escalado ${s.input.w}×${s.input.h} → ${s.output.w}×${s.output.h}.`);
   });
   for (let i = 0; i < m.slices.length; i++)
     for (let j = i + 1; j < m.slices.length; j++) {
