@@ -36,6 +36,62 @@ function dimV(p: Prim[], y1: number, y2: number, x: number, label: string, fs: n
   p.push({ t: "text", x: x - fs * 0.35, y: (y1 + y2) / 2, s: label, size: fs, color: o.ink, align: "center", rot: -90 });
 }
 
+/** Common free angle of a whole rotated screen (all cabinets share it), else 0. */
+export function screenAngle(s: Screen): number {
+  const a = s.cabinets[0]?.angleDeg ?? 0;
+  return a && s.cabinets.every((c) => (c.angleDeg ?? 0) === a) ? a : 0;
+}
+
+/** The screen expressed in its own unrotated frame plus the pivot to rotate drawings back. */
+export function screenFrame(s: Screen, lookup: PanelLookup) {
+  const angle = screenAngle(s);
+  if (!angle) return { local: s, angle: 0, cx: 0, cy: 0 };
+  let cx = 0, cy = 0, n = 0;
+  for (const c of s.cabinets) { const p = lookup(c.panelId); if (!p) continue; const d = cabDims(c, p); cx += c.x + d.w / 2; cy += c.y + d.h / 2; n++; }
+  cx /= n || 1; cy /= n || 1;
+  const r = (-angle * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+  const cabinets = s.cabinets.map((c) => {
+    const p = lookup(c.panelId); const d = p ? cabDims(c, p) : { w: 0, h: 0 };
+    const px = c.x + d.w / 2 - cx, py = c.y + d.h / 2 - cy;
+    return { ...c, angleDeg: undefined, x: Math.round(cx + px * co - py * si - d.w / 2), y: Math.round(cy + px * si + py * co - d.h / 2) };
+  });
+  return { local: { ...s, cabinets }, angle, cx, cy };
+}
+
+/** Rotate drawing primitives about a pivot (clockwise in plan coordinates, y down). */
+export function rotatePrims(prims: Prim[], angle: number, cx: number, cy: number): Prim[] {
+  if (!angle) return prims;
+  const r = (angle * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+  const P = (x: number, y: number) => ({ x: cx + (x - cx) * co - (y - cy) * si, y: cy + (x - cx) * si + (y - cy) * co });
+  return prims.map((p): Prim => {
+    if (p.t === "rect") { const c = P(p.x + p.w / 2, p.y + p.h / 2); return { ...p, x: c.x - p.w / 2, y: c.y - p.h / 2, rot: (p.rot ?? 0) + angle }; }
+    if (p.t === "line") { const a = P(p.x1, p.y1), b = P(p.x2, p.y2); return { ...p, x1: a.x, y1: a.y, x2: b.x, y2: b.y }; }
+    if (p.t === "poly") return { ...p, pts: p.pts.map((q) => P(q.x, q.y)) };
+    const c = P(p.x, p.y); return { ...p, x: c.x, y: c.y, rot: (p.rot ?? 0) + angle };
+  });
+}
+
+function primPoints(p: Prim): { x: number; y: number }[] {
+  if (p.t === "line") return [{ x: p.x1, y: p.y1 }, { x: p.x2, y: p.y2 }];
+  if (p.t === "poly") return p.pts;
+  if (p.t === "text") return [{ x: p.x, y: p.y }];
+  const cx = p.x + p.w / 2, cy = p.y + p.h / 2, r = ((p.rot ?? 0) * Math.PI) / 180;
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a = 0, b = 0]) => ({ x: cx + (a * p.w / 2) * Math.cos(r) - (b * p.h / 2) * Math.sin(r), y: cy + (a * p.w / 2) * Math.sin(r) + (b * p.h / 2) * Math.cos(r) }));
+}
+
+/** Rotates the drawing part with the screen and re-stacks the legend below it, unrotated. */
+function rotatedPlan(drawing: Prim[], legend: Prim[], legendTop: number, angle: number, cx: number, cy: number, fs: number, title: string): Plan {
+  const d = rotatePrims(drawing, angle, cx, cy);
+  const pts = d.flatMap(primPoints);
+  const minX = Math.min(...pts.map((q) => q.x)) - fs * 2, minY = Math.min(...pts.map((q) => q.y)) - fs * 2;
+  const maxY0 = Math.max(...pts.map((q) => q.y)) + fs * 2, maxX0 = Math.max(...pts.map((q) => q.x)) + fs * 2;
+  const dy = maxY0 + fs * 1.5 - legendTop, dx = minX + fs * 2;
+  const l = legend.map((p): Prim => p.t === "line" ? { ...p, x1: p.x1 + dx, x2: p.x2 + dx, y1: p.y1 + dy, y2: p.y2 + dy } : p.t === "poly" ? { ...p, pts: p.pts.map((q) => ({ x: q.x + dx, y: q.y + dy })) } : { ...p, x: p.x + dx, y: p.y + dy });
+  const lp = l.flatMap(primPoints);
+  const maxY = Math.max(maxY0, ...lp.map((q) => q.y)) + fs * 1.5;
+  return { prims: [...d, ...l], minX, minY, maxX: Math.max(maxX0, minX + fs * 55), maxY, title };
+}
+
 export function typeColorMap(s: Screen) {
   const m = new Map<string, string>();
   for (const c of s.cabinets) {
