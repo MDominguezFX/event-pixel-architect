@@ -24,7 +24,7 @@ export function screenFrame(s: Screen, lookup: PanelLookup) {
   const cabinets = s.cabinets.map((c) => {
     const p = lookup(c.panelId); const d = p ? cabDims(c, p) : { w: 0, h: 0 };
     const px = c.x + d.w / 2 - cx, py = c.y + d.h / 2 - cy;
-    return { ...c, angleDeg: undefined, x: Math.round(cx + px * co - py * si - d.w / 2), y: Math.round(cy + px * si + py * co - d.h / 2) };
+    return { ...c, angleDeg: undefined, x: cx + px * co - py * si - d.w / 2, y: cy + px * si + py * co - d.h / 2 };
   });
   // Free rotation rounds positions to whole mm: snap back onto the cabinet grid so edges touch again.
   const dims = s.cabinets.map((c) => { const p = lookup(c.panelId); return p ? cabDims(c, p) : { w: 0, h: 0 }; });
