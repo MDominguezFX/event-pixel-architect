@@ -254,9 +254,11 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
               ))}
               {tool === "girar" && <>
                 <Btn className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => rotatePick(pick)}>↻ 90° {pick.size === 1 ? "panel" : `grupo (${pick.size})`}</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 1° antihorario" onClick={() => spin(-1)}>↺ 1°</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 1° horario" onClick={() => spin(1)}>↻ 1°</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 5° antihorario" onClick={() => spin(-5)}>↺ 5°</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 5° horario" onClick={() => spin(5)}>↻ 5°</Btn>
-                <span className="flex items-center gap-1"><Num className="h-7 w-16" value={manualDeg} onChange={setManualDeg} step={0.5} />°
+                <span className="flex items-center gap-1"><Num className="h-7 w-20" value={manualDeg} onChange={setManualDeg} step={0.5} />°
                   <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size || !manualDeg} onClick={() => spin(manualDeg ?? 0)}>Aplicar</Btn></span>
                 <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size || !screen.cabinets.some((k) => pick.has(k.id) && k.angleDeg)} title="Quitar giro libre" onClick={() => mod((s) => { s.cabinets.forEach((k) => { if (pick.has(k.id)) delete k.angleDeg; }); })}>0°</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => rotatePick(new Set(screen.cabinets.map((k) => k.id)))}>↻ Girar pantalla completa</Btn>

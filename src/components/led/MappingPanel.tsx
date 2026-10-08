@@ -56,10 +56,12 @@ export function MappingPanel() {
         </div>}>
         <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-md bg-muted p-1.5 text-xs">
           <span className="font-bold text-muted-foreground">Girar {pick.size ? (pick.size === 1 ? "slice" : `grupo (${pick.size})`) : "— marcá slices"}:</span>
+          <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 1° antihorario" onClick={() => spin(pick, -1)}>↺ 1°</Btn>
+          <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 1° horario" onClick={() => spin(pick, 1)}>↻ 1°</Btn>
           <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => spin(pick, -5)}>↺ 5°</Btn>
           <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => spin(pick, 5)}>↻ 5°</Btn>
           <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => spin(pick, 90)}>↻ 90°</Btn>
-          <span className="flex items-center gap-1"><Num className="h-7 w-16" value={deg} onChange={setDeg} step={0.5} />°
+          <span className="flex items-center gap-1"><Num className="h-7 w-20" value={deg} onChange={setDeg} step={0.5} />°
             <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size || !deg} onClick={() => spin(pick, deg ?? 0)}>Aplicar</Btn></span>
           <Btn variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => setPick(pick.size === m.slices.length ? new Set() : new Set(m.slices.map((x) => x.id)))}>{pick.size === m.slices.length && m.slices.length ? "Ninguno" : "Todos"}</Btn>
           <p className="w-full text-muted-foreground">Un slice gira sobre su centro; un grupo gira alrededor de su centro común. También podés escribir el ángulo exacto en la columna Rot.</p>
