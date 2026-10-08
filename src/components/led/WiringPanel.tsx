@@ -1,4 +1,4 @@
-import { cableRuns, MAX_PIXELS_PER_CABLE, CABLING_NOTE } from "@/lib/led/cabling";
+import { cableRuns, MAX_PIXELS_PER_CABLE, CABLING_NOTE, CORNER_LABEL } from "@/lib/led/cabling";
 import type { Corner, Screen } from "@/lib/led/model";
 import { portColor, wiringPlan } from "@/lib/led/plan";
 import { allPanels, update, useStore } from "@/lib/led/store";
@@ -10,7 +10,7 @@ export function WiringPanel({ screen, dark }: { screen: Screen; dark: boolean })
   const panels = allPanels(st);
   const lookup = (id: string) => panels.find((p) => p.id === id);
   const idx = st.project.screens.findIndex((s) => s.id === screen.id);
-  const { runs, errors } = cableRuns(screen, lookup);
+  const { runs, errors, route } = cableRuns(screen, lookup);
   const plan = wiringPlan(screen, lookup, { dims: false, numbers: true, ink: dark ? "#E8F1FA" : "#0B1B2B", muted: "#6b7c8f" }, idx);
   const mod = (fn: (s: Screen) => void) => update((p) => { const s = p.screens.find((x) => x.id === screen.id); if (s) fn(s); return p; });
 
@@ -25,6 +25,7 @@ export function WiringPanel({ screen, dark }: { screen: Screen; dark: boolean })
               <option value="tl">↖ Arriba izq.</option><option value="tr">↗ Arriba der.</option><option value="bl">↙ Abajo izq.</option><option value="br">↘ Abajo der.</option>
             </select></label>
         </div>
+        <p className="mb-2 rounded-md bg-muted p-2 text-xs"><b>Recorrido óptimo:</b> serpentina por {route.axis}, desde {CORNER_LABEL[route.start]} · {runs.length} puerto{runs.length === 1 ? "" : "s"}</p>
         {errors.map((e) => <Notice key={e} kind="error">{e}</Notice>)}
         <ul className="space-y-1.5">
           {runs.map((r) => (
