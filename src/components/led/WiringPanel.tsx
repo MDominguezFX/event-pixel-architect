@@ -1,5 +1,5 @@
 import { cableRuns, MAX_PIXELS_PER_CABLE, CABLING_NOTE } from "@/lib/led/cabling";
-import type { NumberOrder, Corner, Screen } from "@/lib/led/model";
+import type { Corner, Screen } from "@/lib/led/model";
 import { portColor, wiringPlan } from "@/lib/led/plan";
 import { allPanels, update, useStore } from "@/lib/led/store";
 import { PlanView } from "./PlanView";
@@ -18,10 +18,8 @@ export function WiringPanel({ screen, dark }: { screen: Screen; dark: boolean })
     <div className="grid min-w-0 gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
       <Card title={`Puertos de datos · ${screen.name}`}>
         <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
-          <label className="flex flex-col gap-1 font-semibold">Recorrido
-            <select className="h-8 rounded border border-input bg-background px-1" value={screen.numbering.order} onChange={(e) => mod((s) => { s.numbering.order = e.target.value as NumberOrder; })}>
-              <option value="filas">Por filas</option><option value="columnas">Por columnas</option><option value="serpentina">Serpentina</option>
-            </select></label>
+        <div className="flex flex-col gap-1 font-semibold">Recorrido
+          <span className="flex h-8 items-center rounded border border-input bg-muted px-2 font-normal">Serpentina (fijo)</span></div>
           <label className="flex flex-col gap-1 font-semibold">Inicio
             <select className="h-8 rounded border border-input bg-background px-1" value={screen.numbering.start} onChange={(e) => mod((s) => { s.numbering.start = e.target.value as Corner; })}>
               <option value="tl">↖ Arriba izq.</option><option value="tr">↗ Arriba der.</option><option value="bl">↙ Abajo izq.</option><option value="br">↘ Abajo der.</option>

@@ -21,6 +21,8 @@ export default function Scene3D({ selected, dark }: { selected?: string; dark: b
     return { id: s.id, name: s.name, x: mine.reduce((a, c) => a + c.x, 0) / mine.length, z: mine.reduce((a, c) => a + c.z, 0) / mine.length, y: Math.max(...mine.map((c) => c.y + c.h / 2)) + 0.35 };
   }).filter((x): x is NonNullable<typeof x> => !!x);
   const d = bounds.size * 1.3;
+  // Objetivo estable: solo cambia si cambian los límites, así los re-render no reinician la órbita/zoom.
+  const target = useMemo<[number, number, number]>(() => [bounds.cx, bounds.top / 2, bounds.cz], [bounds.cx, bounds.top, bounds.cz]);
   const bg = dark ? "#0b1622" : "#eef3f8";
 
   return (
@@ -41,7 +43,7 @@ export default function Scene3D({ selected, dark }: { selected?: string; dark: b
       {labels.map((l) => (
         <Text key={l.id} position={[l.x, l.y, l.z]} fontSize={Math.max(0.18, bounds.size / 40)} color={dark ? "#E8F1FA" : "#0B1B2B"} anchorX="center" anchorY="bottom">{l.name}</Text>
       ))}
-      <OrbitControls makeDefault target={[bounds.cx, bounds.top / 2, bounds.cz]} enableDamping maxPolarAngle={Math.PI / 2 - 0.02} />
+      <OrbitControls makeDefault target={target} enableDamping dampingFactor={0.12} zoomSpeed={0.5} rotateSpeed={0.6} panSpeed={0.7} minDistance={Math.max(0.5, bounds.size * 0.15)} maxDistance={bounds.size * 8} maxPolarAngle={Math.PI / 2 - 0.02} />
     </Canvas>
   );
 }

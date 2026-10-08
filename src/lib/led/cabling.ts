@@ -13,7 +13,8 @@ export function cableRuns(screen: Screen, lookup: PanelLookup) {
     else if (panel.resX * panel.resY > MAX_PIXELS_PER_CABLE) errors.push(`${panel.name}: un gabinete supera 650.000 píxeles; requiere dividir su carga según la receptora.`);
   }
   if (errors.length) return { runs: [] as CableRun[], errors };
-  const numbers = numberCabinets(screen, lookup);
+  // El cableado de datos siempre recorre en serpentina (sinusoidal); solo la esquina de inicio es configurable.
+  const numbers = numberCabinets({ ...screen, numbering: { ...screen.numbering, order: "serpentina" } }, lookup);
   const ordered = [...screen.cabinets].sort((a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0));
   const runs: CableRun[] = [];
   for (const cabinet of ordered) {
