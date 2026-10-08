@@ -32,3 +32,28 @@ describe("650.000 píxeles por cable", () => {
     expect(cableRuns(screen, lookup).runs.reduce((sum, r) => sum + r.pixels, 0)).toBe(786432);
   });
 });
+import { outputQuad, rotateSlice } from "@/lib/led/mapping";
+import { generateArenaXml } from "@/lib/led/resolume";
+import { newProject } from "@/lib/led/model";
+import { portColor } from "@/lib/led/plan";
+
+describe("slices, Arena y puertos", () => {
+  it("girar 90° intercambia la caja de salida y rota las esquinas", () => {
+    const s = rotateSlice({ id: "a", name: "A", input: { x: 0, y: 0, w: 200, h: 100 }, output: { x: 0, y: 0, w: 200, h: 100 }, outputIndex: 0 });
+    expect(s.rotation).toBe(90);
+    expect(s.output).toEqual({ x: 0, y: 0, w: 100, h: 200 });
+    expect(outputQuad(s)[0]).toEqual({ x: 100, y: 0 });
+  });
+  it("genera XML de Arena sin plantilla con un slice por slice del proyecto", () => {
+    const p = newProject(BUILTIN_PANELS[6]!);
+    p.mapping.slices = [{ id: "a", name: "Pantalla <1>", input: { x: 0, y: 0, w: 1024, h: 768 }, output: { x: 0, y: 0, w: 1024, h: 768 }, outputIndex: 0 }];
+    const xml = generateArenaXml(p);
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    expect(doc.getElementsByTagName("parsererror").length).toBe(0);
+    expect(doc.getElementsByTagName("Slice").length).toBe(1);
+    expect(xml).toContain("Pantalla &lt;1&gt;");
+  });
+  it("cada puerto tiene un color distinto", () => {
+    expect(new Set([1, 2, 3, 4, 5].map(portColor)).size).toBe(5);
+  });
+});

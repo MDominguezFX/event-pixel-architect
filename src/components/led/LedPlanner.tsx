@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Moon, Sun, FileDown, ImageDown, FileJson, FolderOpen, FilePlus2, CopyPlus, Instagram, Globe } from "lucide-react";
+import { Moon, Sun, FileDown, FileJson, FolderOpen, FilePlus2, CopyPlus, Instagram, Globe } from "lucide-react";
 import manssoLogo from "@/assets/mansso-logo.png.asset.json";
 import startLogo from "@/assets/start-solution-logo.png.asset.json";
 import { BUILTIN_PANELS, type Panel } from "@/lib/led/catalog";
-import { exportJson, exportPdf, exportPng, download, type PngOpts, type PdfOpts } from "@/lib/led/exporters";
+import { exportJson, download } from "@/lib/led/exporters";
+import { ExportDialog } from "./ExportDialog";
+import { WiringPanel } from "./WiringPanel";
 import { newProject, uid, type Project } from "@/lib/led/model";
 import { deleteProject, loadAll, validateProject } from "@/lib/led/persistence";
 import { allPanels, initStore, setCustomPanels, setProject, update, useStore } from "@/lib/led/store";
@@ -12,17 +14,15 @@ import { PanelDialog } from "./PanelDialog";
 import { ProEditor } from "./ProEditor";
 import { ScreenConfig } from "./ScreenConfig";
 import { Btn, Card, Field, inputCls, Notice } from "./ui";
-import { cableRuns } from "@/lib/led/cabling";
 
 export function LedPlanner() {
   const st = useStore();
   const [pro, setPro] = useState(false);
   const [dark, setDark] = useState(false);
   const [sel, setSel] = useState("");
-  const [tab, setTab] = useState<"diseño" | "mapeo" | "catalogo">("diseño");
+  const [tab, setTab] = useState<"diseño" | "cableado" | "mapeo" | "catalogo">("diseño");
   const [panelDlg, setPanelDlg] = useState<{ open: boolean; initial?: Panel }>({ open: false });
-  const [png, setPng] = useState<PngOpts>({ bg: "blanco", dims: true, numbers: true, width: 2400, view: "ambas" });
-  const [pdf, setPdf] = useState<PdfOpts>({ size: "a4", orientation: "landscape", wiring: true });
+  const [exportOpen, setExportOpen] = useState(false);
   const [msg, setMsg] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [openList, setOpenList] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -40,7 +40,6 @@ export function LedPlanner() {
   const panels = allPanels(st);
   const lookup = (id: string) => panels.find((x) => x.id === id);
   const screen = p.screens.find((s) => s.id === sel) ?? p.screens[0]!;
-  const wiringErrors = cableRuns(screen, lookup).errors;
 
   const withPanels = (): Project => {
     const used = new Set(p.screens.flatMap((s) => s.cabinets.map((c) => c.panelId)));
@@ -100,6 +99,7 @@ export function LedPlanner() {
               <Btn variant="outline" title="Duplicar proyecto" onClick={() => { const c = structuredClone(p); c.id = uid(); c.name += " (copia)"; setProject(c); }}><CopyPlus size={16} /><span className="hidden sm:inline">Duplicar</span></Btn>
               <Btn variant="outline" onClick={() => fileRef.current?.click()}><FileJson size={16} />Importar</Btn>
               <Btn variant="outline" onClick={() => exportJson(withPanels())}><FileJson size={16} />JSON</Btn>
+              <Btn onClick={() => setExportOpen(true)}><FileDown size={16} />Exportar PDF / PNG</Btn>
               <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importProject(f); e.target.value = ""; }} />
             </div>
           </div>
@@ -113,30 +113,13 @@ export function LedPlanner() {
               ))}
             </div>
           )}
-          <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-2">
-            <div className="flex flex-wrap items-end gap-2">
-              <Field label="Fondo PNG"><select className={inputCls} value={png.bg} onChange={(e) => setPng({ ...png, bg: e.target.value as PngOpts["bg"] })}><option value="blanco">Blanco</option><option value="oscuro">Oscuro</option><option value="transparente">Transparente</option></select></Field>
-              <Field label="Ancho px"><select className={inputCls} value={png.width} onChange={(e) => setPng({ ...png, width: Number(e.target.value) })}><option value={1600}>1600</option><option value={2400}>2400</option><option value={4000}>4000</option></select></Field>
-              {screen.geometry.type !== "plana" && <Field label="Vista"><select className={inputCls} value={png.view} onChange={(e) => setPng({ ...png, view: e.target.value as PngOpts["view"] })}><option value="frontal">Desarrollada</option><option value="superior">Superior</option><option value="ambas">Ambas</option></select></Field>}
-              <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={png.dims} onChange={(e) => setPng({ ...png, dims: e.target.checked })} />Cotas</label>
-              <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={png.numbers} onChange={(e) => setPng({ ...png, numbers: e.target.checked })} />Números</label>
-              <Btn onClick={() => exportPng(p, screen, lookup, png)}><ImageDown size={16} />Descargar PNG</Btn>
-              <Btn variant="outline" disabled={wiringErrors.length > 0} onClick={() => exportPng(p, screen, lookup, { ...png, wiring: true })}><ImageDown size={16} />Pixel Plot · Cableado</Btn>
-            </div>
-            <div className="flex flex-wrap items-end gap-2">
-              <Field label="Hoja"><select className={inputCls} value={pdf.size} onChange={(e) => setPdf({ ...pdf, size: e.target.value as PdfOpts["size"] })}><option value="a4">A4</option><option value="a3">A3</option></select></Field>
-              <Field label="Orientación"><select className={inputCls} value={pdf.orientation} onChange={(e) => setPdf({ ...pdf, orientation: e.target.value as PdfOpts["orientation"] })}><option value="landscape">Horizontal</option><option value="portrait">Vertical</option></select></Field>
-              <Btn onClick={() => exportPdf(withPanels(), lookup, pdf, pro)}><FileDown size={16} />Descargar PDF</Btn>
-              <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={pdf.wiring ?? false} onChange={(e) => setPdf({ ...pdf, wiring: e.target.checked })} />Incluir cableado</label>
-            </div>
-          </div>
           {msg && <div className="mt-2"><Notice kind={msg.kind}>{msg.text}</Notice></div>}
         </Card>
 
         {pro && (
           <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1 text-sm font-bold">
-            {(["diseño", "mapeo", "catalogo"] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-md px-4 py-1.5 capitalize ${tab === t ? "bg-card shadow" : "text-muted-foreground"}`}>{t === "catalogo" ? "Catálogo" : t === "mapeo" ? "Canvas y slices" : "Diseño"}</button>
+            {(["diseño", "cableado", "mapeo", "catalogo"] as const).map((t) => (
+              <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-md px-4 py-1.5 ${tab === t ? "bg-card shadow" : "text-muted-foreground"}`}>{t === "catalogo" ? "4 · Catálogo" : t === "mapeo" ? "3 · Canvas y Arena" : t === "cableado" ? "2 · Cableado" : "1 · Diseño"}</button>
             ))}
           </div>
         )}
@@ -152,6 +135,12 @@ export function LedPlanner() {
             <ScreenConfig screen={screen} dark={dark} onNewPanel={() => setPanelDlg({ open: true })} />
           </>
         )}
+        {pro && tab === "cableado" && p.screens.length > 1 && (
+          <div className="flex gap-1 overflow-x-auto">
+            {p.screens.map((s) => <button key={s.id} onClick={() => setSel(s.id)} className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${s.id === screen.id ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{s.name}</button>)}
+          </div>
+        )}
+        {pro && tab === "cableado" && <WiringPanel screen={screen} dark={dark} />}
         {pro && tab === "mapeo" && <MappingPanel />}
         {(pro && tab === "catalogo") || !pro ? (
           <Card title="Paneles personalizados" actions={
@@ -186,6 +175,7 @@ export function LedPlanner() {
           </Card>
         ) : null}
       </main>
+      {exportOpen && <ExportDialog project={withPanels()} screen={screen} lookup={lookup} pro={pro} onClose={() => setExportOpen(false)} />}
 
       <footer className="mt-6 border-t border-primary/30 bg-card">
         <div className="mx-auto flex max-w-[1600px] flex-col items-center gap-3 px-4 py-5 text-center">

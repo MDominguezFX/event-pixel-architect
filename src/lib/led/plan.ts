@@ -18,6 +18,9 @@ export const TYPE_COLORS = ["#189BEA", "#22C1FF", "#015FBF", "#7FB8E6", "#0B3E7A
 // Matches the semantic scene color tokens; shared by SVG and document renderers.
 export const SCREEN_COLORS = ["#015FBF", "#087F6B", "#B54D1C", "#AD3975", "#6D50B5", "#496575"];
 export const screenColor = (index: number) => SCREEN_COLORS[((index % SCREEN_COLORS.length) + SCREEN_COLORS.length) % SCREEN_COLORS.length] ?? SCREEN_COLORS[0] ?? "#015FBF";
+/** Distinct, high-contrast colors per data port (P1, P2…), shared by screen and documents. */
+export const PORT_COLORS = ["#189BEA", "#E5484D", "#30A46C", "#F5A524", "#8E4EC6", "#12A594", "#D6409F", "#3E63DD", "#AD7F58", "#5B6B7A"];
+export const portColor = (port: number) => PORT_COLORS[(port - 1) % PORT_COLORS.length] ?? PORT_COLORS[0]!;
 export interface PlanOpts { dims: boolean; numbers: boolean; ink: string; muted: string }
 
 function dimH(p: Prim[], x1: number, x2: number, y: number, label: string, fs: number, o: PlanOpts) {
@@ -157,13 +160,16 @@ export function wiringPlan(s: Screen, lookup: PanelLookup, o: PlanOpts, index = 
   const { runs, errors } = cableRuns(s, lookup);
   const prims: Prim[] = [];
   const color = screenColor(index);
+  const portOf = new Map<string, number>();
+  runs.forEach((r) => r.cabinets.forEach((c) => portOf.set(c.id, r.port)));
   let minX = 0, minY = 0, maxX = stats.widthMm, maxY = stats.heightMm;
   for (const c of s.cabinets) {
     const panel = lookup(c.panelId); if (!panel) continue;
     const d = cabDims(c, panel);
     minX = Math.min(minX, c.x); minY = Math.min(minY, c.y);
     maxX = Math.max(maxX, c.x + d.w); maxY = Math.max(maxY, c.y + d.h);
-    prims.push({ t: "rect", x: c.x, y: c.y, w: d.w, h: d.h, fill: color, stroke: o.ink, lw: fs * 0.05 });
+    const port = portOf.get(c.id);
+    prims.push({ t: "rect", x: c.x, y: c.y, w: d.w, h: d.h, fill: port ? portColor(port) : color, stroke: o.ink, lw: fs * 0.05 });
   }
   for (const run of runs) {
     const centers = run.cabinets.flatMap((c) => {
@@ -187,7 +193,7 @@ export function wiringPlan(s: Screen, lookup: PanelLookup, o: PlanOpts, index = 
   }
   let y = maxY + fs * 2;
   prims.push({ t: "text", x: minX, y, s: `${s.name} · ${stats.resX}×${stats.resY} px · ${runs.length} cables / puertos de datos`, size: fs, color: o.ink, bold: true });
-  for (const run of runs) { y += fs * 1.4; prims.push({ t: "text", x: minX, y, s: `P${run.port} · IN → ${run.cabinets.length} gabinetes · ${run.pixels.toLocaleString("es-AR")} / 650.000 px`, size: fs * 0.85, color: o.ink }); }
+  for (const run of runs) { y += fs * 1.4; prims.push({ t: "rect", x: minX, y: y - fs * 0.8, w: fs, h: fs, fill: portColor(run.port), stroke: o.ink, lw: fs * 0.05 }); prims.push({ t: "text", x: minX + fs * 1.5, y, s: `P${run.port} · IN → ${run.cabinets.length} gabinetes · ${run.pixels.toLocaleString("es-AR")} / 650.000 px`, size: fs * 0.85, color: o.ink }); }
   for (const text of [...errors, ...CABLING_NOTE.split(" · ")]) { y += fs * 1.4; prims.push({ t: "text", x: minX, y, s: text, size: fs * 0.65, color: o.ink }); }
   return { prims, minX: minX - fs * 2, minY: minY - fs * 2, maxX: Math.max(maxX + fs * 2, minX + fs * 55), maxY: y + fs * 2, title: `${s.name} — cableado de datos (vista frontal desarrollada)` };
 }

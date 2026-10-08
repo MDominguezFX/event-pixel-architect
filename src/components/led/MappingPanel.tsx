@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { screenStats } from "@/lib/led/engine";
 import { exportCsv, exportSlicesJson, download } from "@/lib/led/exporters";
-import { mappingWarnings, slicesByCabinet, slicesByScreen } from "@/lib/led/mapping";
+import { mappingWarnings, rotateSlice, slicesByCabinet, slicesByScreen } from "@/lib/led/mapping";
 import { uid, type Rect } from "@/lib/led/model";
-import { analyzeTemplate, exportArenaXml, type TemplateInfo } from "@/lib/led/resolume";
+import { analyzeTemplate, ARENA_TARGET, exportArenaXml, generateArenaXml, type TemplateInfo } from "@/lib/led/resolume";
 import { allPanels, update, useStore } from "@/lib/led/store";
 import { Btn, Card, Field, inputCls, Notice, Num } from "./ui";
 
@@ -52,8 +52,8 @@ export function MappingPanel() {
           <Btn variant="outline" className="h-8 text-xs" onClick={() => update((pr) => { pr.mapping.slices.push({ id: uid(), name: `Grupo ${pr.mapping.slices.length + 1}`, input: { x: 0, y: 0, w: 256, h: 256 }, output: { x: 0, y: 0, w: 256, h: 256 }, outputIndex: 0 }); return pr; })}>+ Grupo</Btn>
         </div>}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-xs">
-            <thead><tr className="text-left text-muted-foreground"><th className="p-1">Nombre</th><th>in X</th><th>in Y</th><th>in W</th><th>in H</th><th>Salida</th><th>out X</th><th>out Y</th><th>out W</th><th>out H</th><th /></tr></thead>
+          <table className="w-full min-w-[820px] text-xs">
+            <thead><tr className="text-left text-muted-foreground"><th className="p-1">Nombre</th><th>in X</th><th>in Y</th><th>in W</th><th>in H</th><th>Salida</th><th>out X</th><th>out Y</th><th>out W</th><th>out H</th><th>Rot.</th><th /></tr></thead>
             <tbody>
               {m.slices.map((s, i) => (
                 <tr key={s.id} className="border-t border-border">
@@ -61,6 +61,7 @@ export function MappingPanel() {
                   {(["x", "y", "w", "h"] as const).map((f) => <td key={"i" + f} className="p-0.5"><Num className="h-7 w-16" value={s.input[f]} onChange={(v) => setRect(i, "input", f, v)} /></td>)}
                   <td className="p-0.5"><select className={inputCls + " h-7"} value={s.outputIndex} onChange={(e) => update((pr) => { pr.mapping.slices[i]!.outputIndex = Number(e.target.value); return pr; })}>{m.outputs.map((o, j) => <option key={j} value={j}>{o.name}</option>)}</select></td>
                   {(["x", "y", "w", "h"] as const).map((f) => <td key={"o" + f} className="p-0.5"><Num className="h-7 w-16" value={s.output[f]} onChange={(v) => setRect(i, "output", f, v)} /></td>)}
+                  <td className="p-0.5"><Btn variant="outline" className="h-7 px-2 text-xs" title="Girar 90° en la salida" onClick={() => update((pr) => { pr.mapping.slices[i] = rotateSlice(pr.mapping.slices[i]!); return pr; })}>↻ {s.rotation ?? 0}°</Btn></td>
                   <td><Btn variant="ghost" className="h-7 px-2" onClick={() => update((pr) => { pr.mapping.slices.splice(i, 1); return pr; })}>✕</Btn></td>
                 </tr>
               ))}
@@ -76,22 +77,31 @@ export function MappingPanel() {
       </Card>
 
       <Card title="Resolume Arena — Advanced Output">
-        <p className="text-xs text-muted-foreground">El XML se genera sólo a partir de un preset real exportado por tu versión de Arena (Output › Advanced Output › Presets › Save). No se inventa el esquema. El original no se modifica.</p>
-        <label className="mt-2 inline-flex cursor-pointer items-center rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">
-          Importar preset XML de Arena
-          <input type="file" accept=".xml" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setTpl(analyzeTemplate(await f.text())); e.target.value = ""; }} />
-        </label>
+        <p className="text-xs text-muted-foreground">Genera el preset de Advanced Output con una pantalla por salida y tus slices (entrada, salida y rotación). Para cargarlo: copialo en Documentos/Resolume Arena/Presets/Advanced Output y elegilo en Output › Advanced Output. Las salidas a monitores físicos se reasignan en cada computadora.</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="rounded-md border border-border p-3">
+            <p className="text-sm font-bold">Exportación directa</p>
+            <p className="mt-1 text-xs text-muted-foreground">Formato de {ARENA_TARGET}. No verificado abriéndolo en Arena: probalo antes del show.</p>
+            <Btn className="mt-2 w-full" disabled={!m.slices.length} onClick={() => download(`${p.name}_arena.xml`, generateArenaXml(p), "application/xml")}>Exportar XML para Arena</Btn>
+          </div>
+          <div className="rounded-md border border-border p-3">
+            <p className="text-sm font-bold">Con preset real (más seguro)</p>
+            <p className="mt-1 text-xs text-muted-foreground">Importá un preset guardado desde tu Arena; se usa como base conservando su estructura. El original no se modifica.</p>
+            <label className="mt-2 inline-flex w-full cursor-pointer items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">
+              {tpl?.ok ? "Cambiar preset" : "Importar preset XML de Arena"}
+              <input type="file" accept=".xml" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setTpl(analyzeTemplate(await f.text())); e.target.value = ""; }} />
+            </label>
+            {tpl?.ok && <Btn variant="outline" className="mt-2 w-full" disabled={!m.slices.length} onClick={() => download(`${p.name}_arena_preset.xml`, exportArenaXml(tpl, p), "application/xml")}>Exportar usando el preset</Btn>}
+          </div>
+        </div>
+        {!m.slices.length && <p className="mt-2 text-xs text-muted-foreground">Primero generá slices (por pantalla o por gabinete).</p>}
         {tpl && (
           <div className="mt-2 space-y-1 text-xs">
-            {tpl.ok && <Notice kind="info">Plantilla reconocida: raíz &lt;{tpl.rootName}&gt; · versión {tpl.version ?? "no declarada"} · {tpl.sliceCount} slice(s). Validación automática de estructura únicamente: no verificada abriéndola en Arena.</Notice>}
+            {tpl.ok && <Notice kind="info">Preset reconocido: raíz &lt;{tpl.rootName}&gt; · versión {tpl.version ?? "no declarada"} · {tpl.sliceCount} slice(s). Validación automática de estructura únicamente.</Notice>}
             {tpl.errors.map((x) => <Notice key={x} kind="error">{x}</Notice>)}
             {tpl.notes.map((x) => <Notice key={x}>{x}</Notice>)}
           </div>
         )}
-        <div className="mt-2">
-          <Btn disabled={!tpl?.ok || !m.slices.length} onClick={() => tpl && download(`${p.name}_arena.xml`, exportArenaXml(tpl, p), "application/xml")}>Exportar XML para Arena</Btn>
-        </div>
-        {!tpl?.ok && <p className="mt-2 text-xs text-muted-foreground">Sin plantilla válida: usá CSV/JSON. Para cargar el preset en Arena: copiarlo a Documentos/Resolume Arena/Presets/Advanced Output y seleccionarlo en Advanced Output. Las salidas a monitores físicos deben reasignarse en cada computadora.</p>}
       </Card>
     </div>
   );
