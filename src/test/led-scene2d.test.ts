@@ -55,3 +55,40 @@ describe("serpentine without diagonal connections", () => {
     for (const line of lines) expect(line.x1 === line.x2 || line.y1 === line.y2).toBe(true);
   });
 });
+import { rotateFree } from "@/lib/led/edit";
+import { layoutPlan } from "@/lib/led/plan";
+describe("horizontal cabling that turns with the screen", () => {
+  const opts = { dims: true, numbers: true, ink: "ink", muted: "muted" };
+  const big = lookup("r1000-p39")!;
+  const lines = (s: ReturnType<typeof newScreen>) => wiringPlan(s, lookup, opts).prims.filter((p) => p.t === "line" && p.stroke === "#ffffff") as { x1: number; y1: number; x2: number; y2: number }[];
+  it("routes along rows: each row of 8 is one horizontal line of 7 links", () => {
+    const s = newScreen(big, "A", 8, 3);
+    const ls = lines(s);
+    expect(ls.filter((l) => Math.abs(l.y1 - l.y2) < 1e-6).length).toBeGreaterThanOrEqual(7 * 2);
+  });
+  it("a screen rotated 30° keeps the same ports and every cable segment follows 30° or 120°", () => {
+    const s = newScreen(big, "A", 8, 3);
+    const base = cableRuns(s, lookup).runs.map((r) => r.cabinets.length);
+    const r = { ...s, cabinets: rotateFree(s.cabinets, new Set(s.cabinets.map((c) => c.id)), 30, lookup) };
+    expect(cableRuns(r, lookup).runs.map((x) => x.cabinets.length)).toEqual(base);
+    for (const l of lines(r)) {
+      const a = ((Math.atan2(l.y2 - l.y1, l.x2 - l.x1) * 180) / Math.PI + 360) % 90;
+      expect(Math.min(Math.abs(a - 30), Math.abs(a - 30 + 90), Math.abs(a - 30 - 90))).toBeLessThan(0.5);
+    }
+  });
+  it("front plan dimension texts turn with a rotated screen", () => {
+    const s = newScreen(big, "A", 8, 3);
+    const r = { ...s, cabinets: rotateFree(s.cabinets, new Set(s.cabinets.map((c) => c.id)), 30, lookup) };
+    const t = frontPlanTexts(r).find((p) => p.s.includes("1024 px"));
+    expect(t?.rot).toBe(30);
+  });
+  it("layout plan states how many screens and cabinets", () => {
+    const p = newProject(big); p.screens = [newScreen(big, "A", 8, 3), newScreen(big, "B", 2, 1)];
+    const texts = layoutPlan(p, lookup, opts).prims.flatMap((x) => (x.t === "text" ? [x.s] : []));
+    expect(texts).toContain("2 pantallas · 26 gabinetes en total");
+  });
+});
+import { frontPlan } from "@/lib/led/plan";
+function frontPlanTexts(s: ReturnType<typeof newScreen>) {
+  return frontPlan(s, lookup, { dims: true, numbers: true, ink: "ink", muted: "muted" }).prims.flatMap((p) => (p.t === "text" ? [p] : []));
+}
