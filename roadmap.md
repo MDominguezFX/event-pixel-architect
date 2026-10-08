@@ -14,3 +14,4 @@
 - [x] Vista 3D esquemática integrada
 - [x] Optimizar cableado automáticamente (menos puertos)
 - [ ] Mostrar en el editor 2D los mismos gabinetes y formas que en 3D
+- [ ] Eliminar diagonales del recorrido de cableado
