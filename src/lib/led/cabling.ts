@@ -7,7 +7,9 @@ export interface CableRoute { start: Corner; axis: "columnas" | "filas" }
 
 const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
 
-/** Only cabinets sharing an edge can continue the same serpentine run. */
+export { screenAngle, screenFrame } from "./engine";
+import { screenFrame } from "./engine";
+
 export function cableNeighbors(a: Cabinet, b: Cabinet, lookup: PanelLookup): boolean {
   const pa = lookup(a.panelId), pb = lookup(b.panelId);
   if (!pa || !pb) return false;
@@ -55,20 +57,28 @@ function group(screen: Screen, lookup: PanelLookup, route: CableRoute) {
 
 /**
  * Cableado siempre en serpentina con gabinetes completos y ≤ 650.000 px por cable.
- * Optimiza probando las 4 esquinas × 2 sentidos: menos puertos primero, luego carga más pareja;
+ * Siempre horizontal (por filas); optimiza probando las 4 esquinas: menos puertos primero, luego carga más pareja;
  * ante empate se respeta la esquina configurada.
  */
-export function cableRuns(screen: Screen, lookup: PanelLookup) {
+export function cableRuns(original: Screen, lookup: PanelLookup) {
+  // Route in the screen's own frame so cables stay horizontal and turn with a rotated screen.
+  const screen = screenFrame(original, lookup).local;
+  const back = new Map(original.cabinets.map((c) => [c.id, c]));
+  const res = cableRunsLocal(screen, lookup);
+  return { ...res, runs: res.runs.map((r) => ({ ...r, cabinets: r.cabinets.map((c) => back.get(c.id) ?? c) })) };
+}
+
+function cableRunsLocal(screen: Screen, lookup: PanelLookup) {
   const errors: string[] = [];
   for (const cabinet of screen.cabinets) {
     const panel = lookup(cabinet.panelId);
     if (!panel) errors.push(`Gabinete ${cabinet.id}: panel desconocido.`);
     else if (panel.resX * panel.resY > MAX_PIXELS_PER_CABLE) errors.push(`${panel.name}: un gabinete supera 650.000 píxeles; requiere dividir su carga según la receptora.`);
   }
-  const fallback: CableRoute = { start: screen.numbering.start, axis: "columnas" };
+  const fallback: CableRoute = { start: screen.numbering.start, axis: "filas" };
   if (errors.length) return { runs: [] as CableRun[], errors, route: fallback };
   const pref = screen.numbering.start;
-  const candidates: CableRoute[] = [pref, ...CORNERS.filter((c) => c !== pref)].flatMap((start) => [{ start, axis: "columnas" as const }, { start, axis: "filas" as const }]);
+  const candidates: CableRoute[] = [pref, ...CORNERS.filter((c) => c !== pref)].map((start) => ({ start, axis: "filas" as const }));
   let best = { route: fallback, runs: group(screen, lookup, fallback) };
   const score = (r: CableRun[]): [number, number] => [r.length, Math.max(0, ...r.map((x) => x.pixels)) - Math.min(...r.map((x) => x.pixels))];
   for (const route of candidates) {

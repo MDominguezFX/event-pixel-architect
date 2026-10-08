@@ -4,7 +4,8 @@ import { realPitch } from "./catalog";
 import { cabDims, numberCabinets, screenStats, fmtM, type PanelLookup } from "./engine";
 import { computeCurve } from "./geometry";
 import type { Project, Screen } from "./model";
-import { cableRuns, cablePath, CABLING_NOTE } from "./cabling";
+import { cableRuns, cablePath, CABLING_NOTE, screenFrame } from "./cabling";
+export { screenAngle, screenFrame } from "./cabling";
 
 export type Prim =
   | { t: "rect"; x: number; y: number; w: number; h: number; fill?: string; stroke?: string; lw?: number; hatch?: boolean; rot?: number }
@@ -36,6 +37,40 @@ function dimV(p: Prim[], y1: number, y2: number, x: number, label: string, fs: n
   p.push({ t: "text", x: x - fs * 0.35, y: (y1 + y2) / 2, s: label, size: fs, color: o.ink, align: "center", rot: -90 });
 }
 
+/** Rotate drawing primitives about a pivot (clockwise in plan coordinates, y down). */
+export function rotatePrims(prims: Prim[], angle: number, cx: number, cy: number): Prim[] {
+  if (!angle) return prims;
+  const r = (angle * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+  const P = (x: number, y: number) => ({ x: cx + (x - cx) * co - (y - cy) * si, y: cy + (x - cx) * si + (y - cy) * co });
+  return prims.map((p): Prim => {
+    if (p.t === "rect") { const c = P(p.x + p.w / 2, p.y + p.h / 2); return { ...p, x: c.x - p.w / 2, y: c.y - p.h / 2, rot: (p.rot ?? 0) + angle }; }
+    if (p.t === "line") { const a = P(p.x1, p.y1), b = P(p.x2, p.y2); return { ...p, x1: a.x, y1: a.y, x2: b.x, y2: b.y }; }
+    if (p.t === "poly") return { ...p, pts: p.pts.map((q) => P(q.x, q.y)) };
+    const c = P(p.x, p.y); return { ...p, x: c.x, y: c.y, rot: (p.rot ?? 0) + angle };
+  });
+}
+
+function primPoints(p: Prim): { x: number; y: number }[] {
+  if (p.t === "line") return [{ x: p.x1, y: p.y1 }, { x: p.x2, y: p.y2 }];
+  if (p.t === "poly") return p.pts;
+  if (p.t === "text") return [{ x: p.x, y: p.y }];
+  const cx = p.x + p.w / 2, cy = p.y + p.h / 2, r = ((p.rot ?? 0) * Math.PI) / 180;
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a = 0, b = 0]) => ({ x: cx + (a * p.w / 2) * Math.cos(r) - (b * p.h / 2) * Math.sin(r), y: cy + (a * p.w / 2) * Math.sin(r) + (b * p.h / 2) * Math.cos(r) }));
+}
+
+/** Rotates the drawing part with the screen and re-stacks the legend below it, unrotated. */
+function rotatedPlan(drawing: Prim[], legend: Prim[], legendTop: number, angle: number, cx: number, cy: number, fs: number, title: string): Plan {
+  const d = rotatePrims(drawing, angle, cx, cy);
+  const pts = d.flatMap(primPoints);
+  const minX = Math.min(...pts.map((q) => q.x)) - fs * 2, minY = Math.min(...pts.map((q) => q.y)) - fs * 2;
+  const maxY0 = Math.max(...pts.map((q) => q.y)) + fs * 2, maxX0 = Math.max(...pts.map((q) => q.x)) + fs * 2;
+  const dy = maxY0 + fs * 1.5 - legendTop, dx = minX + fs * 2;
+  const l = legend.map((p): Prim => p.t === "line" ? { ...p, x1: p.x1 + dx, x2: p.x2 + dx, y1: p.y1 + dy, y2: p.y2 + dy } : p.t === "poly" ? { ...p, pts: p.pts.map((q) => ({ x: q.x + dx, y: q.y + dy })) } : { ...p, x: p.x + dx, y: p.y + dy });
+  const lp = l.flatMap(primPoints);
+  const maxY = Math.max(maxY0, ...lp.map((q) => q.y)) + fs * 1.5;
+  return { prims: [...d, ...l], minX, minY, maxX: Math.max(maxX0, minX + fs * 55), maxY, title };
+}
+
 export function typeColorMap(s: Screen) {
   const m = new Map<string, string>();
   for (const c of s.cabinets) {
@@ -46,7 +81,8 @@ export function typeColorMap(s: Screen) {
 }
 
 /** Plano frontal desarrollado acotado. */
-export function frontPlan(s: Screen, lookup: PanelLookup, o: PlanOpts): Plan {
+export function frontPlan(s0: Screen, lookup: PanelLookup, o: PlanOpts): Plan {
+  const f = screenFrame(s0, lookup), s = f.local;
   const st = screenStats(s, lookup);
   const W = st.widthMm, H = st.heightMm;
   const fs = Math.max(W, H) / 45;
@@ -77,6 +113,7 @@ export function frontPlan(s: Screen, lookup: PanelLookup, o: PlanOpts): Plan {
     for (let i = 0; i < sy.length - 1; i++) dimV(prims, sy[i]!, sy[i + 1]!, W + fs * 1.6, `${Math.round(sy[i + 1]! - sy[i]!)}`, small, o);
   }
   // Leyenda
+  const legendAt = prims.length;
   let ly = H + fs * 4;
   for (const t of st.types) {
     const k = t.panel.id + (t.rotated ? "@r" : "");
@@ -86,8 +123,11 @@ export function frontPlan(s: Screen, lookup: PanelLookup, o: PlanOpts): Plan {
     prims.push({ t: "text", x: fs * 1.5, y: ly, s: `${t.count} × ${t.panel.name} — ${d} mm — ${r} px — pitch ${realPitch(t.panel).x.toFixed(3)} mm`, size: fs * 0.8, color: o.ink });
     ly += fs * 1.4;
   }
+  if (f.angle) { prims.push({ t: "text", x: 0, y: ly + fs * 0.2, s: `Pantalla girada ${f.angle}° · cotas y medidas en el sentido de la pantalla`, size: fs * 0.75, color: o.ink }); ly += fs * 1.4; }
   prims.push({ t: "text", x: 0, y: ly + fs * 0.2, s: `${s.name}: ${st.count} gabinetes · ${st.areaM2.toFixed(2)} m² · ${st.resX}×${st.resY} px (${st.activePixels.toLocaleString("es-AR")} px activos)`, size: fs * 0.85, color: o.ink, bold: true });
-  return { prims, minX: -fs * 5, minY: -fs * 5, maxX: W + fs * 4, maxY: ly + fs * 1.5, title: `${s.name} — vista frontal desarrollada` };
+  const title = `${s.name} — vista frontal desarrollada`;
+  if (f.angle) return rotatedPlan(prims.slice(0, legendAt), prims.slice(legendAt), H + fs * 3, f.angle, f.cx, f.cy, fs, title);
+  return { prims, minX: -fs * 5, minY: -fs * 5, maxX: W + fs * 4, maxY: ly + fs * 1.5, title };
 }
 
 /** Vista superior para curvas. */
@@ -150,13 +190,16 @@ export function layoutPlan(p: Project, lookup: PanelLookup, o: PlanOpts): Plan {
     const st = screenStats(s, lookup);
     prims.push({ t: "rect", x: s.x, y: s.y, w: st.widthMm, h: st.heightMm, fill: screenColor(i), stroke: o.ink, lw: fs * 0.08 });
     prims.push({ t: "text", x: s.x + st.widthMm / 2, y: s.y + st.heightMm / 2, s: s.name, size: fs, color: "#ffffff", align: "center", bold: true });
-    prims.push({ t: "text", x: s.x, y: s.y + st.heightMm + fs * 1.2, s: `X ${fmtM(s.x)} · Y ${fmtM(s.y)} · ${fmtM(st.widthMm)} × ${fmtM(st.heightMm)}`, size: fs * 0.6, color: o.ink });
+    prims.push({ t: "text", x: s.x, y: s.y + st.heightMm + fs * 1.2, s: `${i + 1}/${p.screens.length} · ${st.count} gab. · X ${fmtM(s.x)} · Y ${fmtM(s.y)} · ${fmtM(st.widthMm)} × ${fmtM(st.heightMm)}`, size: fs * 0.6, color: o.ink });
   });
-  return { prims, minX: minX - fs * 3, minY: minY - fs * 3, maxX: maxX + fs * 3, maxY: maxY + fs * 3, title: "Layout general (posiciones desde el origen)" };
+  const total = p.screens.reduce((a, s) => a + s.cabinets.length, 0);
+  prims.push({ t: "text", x: minX, y: maxY + fs * 3, s: `${p.screens.length} pantalla${p.screens.length === 1 ? "" : "s"} · ${total} gabinetes en total`, size: fs * 0.9, color: o.ink, bold: true });
+  return { prims, minX: minX - fs * 3, minY: minY - fs * 3, maxX: maxX + fs * 3, maxY: maxY + fs * 4.5, title: "Layout general (posiciones desde el origen)" };
 }
 
 /** Developed front view: numbered whole-cabinet chains, arrows and port loads. */
-export function wiringPlan(s: Screen, lookup: PanelLookup, o: PlanOpts, index = 0): Plan {
+export function wiringPlan(s0: Screen, lookup: PanelLookup, o: PlanOpts, index = 0): Plan {
+  const f = screenFrame(s0, lookup), s = f.local;
   const stats = screenStats(s, lookup), fs = Math.max(stats.widthMm, stats.heightMm, 1000) / 45;
   const { runs, errors } = cableRuns(s, lookup);
   const prims: Prim[] = [];
@@ -197,9 +240,12 @@ export function wiringPlan(s: Screen, lookup: PanelLookup, o: PlanOpts, index = 
       prims.push({ t: "text", x: point.x, y: point.y - size * 0.8, s: `P${run.port}:${String(i + 1).padStart(2, "0")}${i === 0 ? " IN" : ""}`, size, color: "#ffffff", align: "center", bold: true });
     });
   }
+  const legendAt = prims.length;
   let y = maxY + fs * 2;
   prims.push({ t: "text", x: minX, y, s: `${s.name} · ${stats.resX}×${stats.resY} px · ${runs.length} cables / puertos de datos`, size: fs, color: o.ink, bold: true });
   for (const run of runs) { y += fs * 1.4; prims.push({ t: "rect", x: minX, y: y - fs * 0.8, w: fs, h: fs, fill: portColor(run.port), stroke: o.ink, lw: fs * 0.05 }); prims.push({ t: "text", x: minX + fs * 1.5, y, s: `P${run.port} · IN → ${run.cabinets.length} gabinetes · ${run.pixels.toLocaleString("es-AR")} / 650.000 px`, size: fs * 0.85, color: o.ink }); }
   for (const text of [...errors, ...CABLING_NOTE.split(" · ")]) { y += fs * 1.4; prims.push({ t: "text", x: minX, y, s: text, size: fs * 0.65, color: o.ink }); }
-  return { prims, minX: minX - fs * 2, minY: minY - fs * 2, maxX: Math.max(maxX + fs * 2, minX + fs * 55), maxY: y + fs * 2, title: `${s.name} — cableado de datos (vista frontal desarrollada)` };
+  const title = `${s.name} — cableado de datos (vista frontal desarrollada)`;
+  if (f.angle) return rotatedPlan(prims.slice(0, legendAt), prims.slice(legendAt), maxY + fs, f.angle, f.cx, f.cy, fs, title);
+  return { prims, minX: minX - fs * 2, minY: minY - fs * 2, maxX: Math.max(maxX + fs * 2, minX + fs * 55), maxY: y + fs * 2, title };
 }

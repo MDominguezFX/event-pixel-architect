@@ -37,6 +37,6 @@ export function rotateFree(cabinets: Cabinet[], ids: Set<string>, delta: number,
     const b = box(c), px = b.x + b.w / 2 - cx, py = b.y + b.h / 2 - cy;
     const nx = cx + px * co - py * si, ny = cy + px * si + py * co;
     const a = Math.round(((((c.angleDeg ?? 0) + delta) % 360) + 360) % 360 * 100) / 100;
-    return { ...c, angleDeg: a, x: Math.round(nx - b.w / 2), y: Math.round(ny - b.h / 2) };
+    return { ...c, angleDeg: a, x: Math.round((nx - b.w / 2) * 1000) / 1000, y: Math.round((ny - b.h / 2) * 1000) / 1000 };
   });
 }
