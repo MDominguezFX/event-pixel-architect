@@ -142,7 +142,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <div className="flex flex-wrap gap-1" role="group" aria-label="Vista del plano 2D">
           {([['espacial', 'Espacial'], ['frontal', 'Frontal'], ['desarrollada', 'Desarrollada']] as const).map(([id, label]) =>
-            <Btn key={id} variant={projection === id ? "primary" : "outline"} className="h-8 px-2 text-xs" aria-pressed={projection === id} onClick={() => setProjection(id)}>{label}</Btn>)}
+            <Btn key={id} variant={projection === id ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setProjection(id)}>{label}</Btn>)}
         </div>
         <label className="flex items-center gap-1">Grilla
           <select className="rounded border border-input bg-background px-1" value={snap} onChange={(e) => setSnap(Number(e.target.value))}>
