@@ -5,7 +5,7 @@ import { screenStats, fmtM, type PanelLookup } from "./engine";
 import { computeCurve } from "./geometry";
 import { slicesCsv } from "./mapping";
 import type { Project, Screen } from "./model";
-import { frontPlan, layoutPlan, topPlan, type Plan, type Prim } from "./plan";
+import { frontPlan, layoutPlan, topPlan, wiringPlan, type Plan, type Prim } from "./plan";
 
 export function download(name: string, data: Blob | string, mime = "application/octet-stream") {
   const blob = typeof data === "string" ? new Blob([data], { type: mime }) : data;
@@ -18,7 +18,7 @@ export function download(name: string, data: Blob | string, mime = "application/
 const safe = (s: string) => s.replace(/[^\w\-]+/g, "_").slice(0, 60) || "proyecto";
 
 // ---------- PNG ----------
-export interface PngOpts { bg: "blanco" | "oscuro" | "transparente"; dims: boolean; numbers: boolean; width: number; view: "frontal" | "superior" | "ambas" }
+export interface PngOpts { bg: "blanco" | "oscuro" | "transparente"; dims: boolean; numbers: boolean; width: number; view: "frontal" | "superior" | "ambas"; wiring?: boolean }
 
 function drawCanvas(ctx: CanvasRenderingContext2D, plan: Plan, box: { x: number; y: number; w: number; h: number }) {
   const pw = plan.maxX - plan.minX, ph = plan.maxY - plan.minY;
@@ -55,32 +55,34 @@ export async function exportPng(project: Project, screen: Screen, lookup: PanelL
   const ink = dark ? "#E8F1FA" : "#0B1B2B";
   const po = { dims: o.dims, numbers: o.numbers, ink, muted: "#6b7c8f" };
   const plans: Plan[] = [];
-  if (o.view !== "superior") plans.push(frontPlan(screen, lookup, po));
+  if (o.wiring) plans.push(wiringPlan(screen, lookup, po, project.screens.findIndex((s) => s.id === screen.id)));
+  else if (o.view !== "superior") plans.push(frontPlan(screen, lookup, po));
   const tp = topPlan(screen, lookup, po);
-  if (tp && o.view !== "frontal") plans.push(tp);
+  if (tp && o.view !== "frontal" && !o.wiring) plans.push(tp);
   if (!plans.length) plans.push(frontPlan(screen, lookup, po));
   const W = o.width, header = W * 0.06, footer = W * 0.03;
   const aspects = plans.map((p) => (p.maxY - p.minY) / (p.maxX - p.minX));
   const H = Math.round(header + footer + aspects.reduce((a, b) => a + b * W * 0.92, 0) + W * 0.04 * plans.length);
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-  const ctx = cv.getContext("2d")!;
+  const ctx = cv.getContext("2d");
+  if (!ctx) throw new Error("No se pudo crear el plano PNG.");
   if (o.bg !== "transparente") { ctx.fillStyle = dark ? "#0B1420" : "#ffffff"; ctx.fillRect(0, 0, W, H); }
   await document.fonts?.ready;
   const st = screenStats(screen, lookup);
   ctx.fillStyle = ink; ctx.font = `800 ${W * 0.022}px "Nunito Sans", sans-serif`;
-  ctx.fillText(`${project.name} — ${screen.name}`, W * 0.04, header * 0.5);
+  ctx.fillText(`${project.name} — ${screen.name}${o.wiring ? " · Pixel Plot / Cableado" : ""}`, W * 0.04, header * 0.5, W * 0.92);
   ctx.font = `400 ${W * 0.013}px "Nunito Sans", sans-serif`;
-  ctx.fillText(`${fmtM(st.widthMm)} × ${fmtM(st.heightMm)} · ${st.resX}×${st.resY} px · ${st.count} gabinetes · ${st.areaM2.toFixed(2)} m² · ${st.types.map((t) => t.panel.name).join(" + ")}`, W * 0.04, header * 0.85);
+  ctx.fillText(`${fmtM(st.widthMm)} × ${fmtM(st.heightMm)} · ${st.resX}×${st.resY} px · ${st.count} gabinetes · ${st.areaM2.toFixed(2)} m² · ${st.types.map((t) => t.panel.name).join(" + ")}`, W * 0.04, header * 0.85, W * 0.92);
   let y = header;
   plans.forEach((p, i) => { const h = aspects[i]! * W * 0.92; drawCanvas(ctx, p, { x: W * 0.04, y, w: W * 0.92, h }); y += h + W * 0.04; });
   ctx.fillStyle = "#189BEA"; ctx.font = `700 ${W * 0.011}px "Nunito Sans", sans-serif`; ctx.textAlign = "right";
   ctx.fillText("MANSSO PIXEL · MANSSO TIP / Start Solution", W * 0.96, H - footer * 0.4);
-  const blob: Blob = await new Promise((r) => cv.toBlob((b) => r(b!), "image/png"));
-  download(`${safe(project.name)}_${safe(screen.name)}.png`, blob);
+  const blob = await new Promise<Blob>((resolve, reject) => cv.toBlob((b) => b ? resolve(b) : reject(new Error("No se pudo generar el PNG.")), "image/png"));
+  download(`${safe(project.name)}_${safe(screen.name)}${o.wiring ? "_cableado" : ""}.png`, blob);
 }
 
 // ---------- PDF ----------
-export interface PdfOpts { size: "a4" | "a3"; orientation: "landscape" | "portrait" }
+export interface PdfOpts { size: "a4" | "a3"; orientation: "landscape" | "portrait"; wiring?: boolean }
 
 function hexRgb(h: string): [number, number, number] {
   const m = h.replace("#", ""); return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)];
@@ -138,6 +140,7 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
   for (const s of project.screens) {
     frame(`${s.name} — plano frontal desarrollado`);
     drawPdf(doc, frontPlan(s, lookup, po), box);
+    if (o.wiring) { frame(`${s.name} — Pixel Plot / Cableado de datos`); drawPdf(doc, wiringPlan(s, lookup, po, project.screens.indexOf(s)), box); }
     const tp = topPlan(s, lookup, po);
     if (tp) { frame(`${s.name} — vista superior`); drawPdf(doc, tp, box); }
     // Tabla de equipamiento

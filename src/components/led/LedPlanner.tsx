@@ -12,6 +12,7 @@ import { PanelDialog } from "./PanelDialog";
 import { ProEditor } from "./ProEditor";
 import { ScreenConfig } from "./ScreenConfig";
 import { Btn, Card, Field, inputCls, Notice } from "./ui";
+import { cableRuns } from "@/lib/led/cabling";
 
 export function LedPlanner() {
   const st = useStore();
@@ -21,7 +22,7 @@ export function LedPlanner() {
   const [tab, setTab] = useState<"diseño" | "mapeo" | "catalogo">("diseño");
   const [panelDlg, setPanelDlg] = useState<{ open: boolean; initial?: Panel }>({ open: false });
   const [png, setPng] = useState<PngOpts>({ bg: "blanco", dims: true, numbers: true, width: 2400, view: "ambas" });
-  const [pdf, setPdf] = useState<PdfOpts>({ size: "a4", orientation: "landscape" });
+  const [pdf, setPdf] = useState<PdfOpts>({ size: "a4", orientation: "landscape", wiring: true });
   const [msg, setMsg] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [openList, setOpenList] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -39,6 +40,7 @@ export function LedPlanner() {
   const panels = allPanels(st);
   const lookup = (id: string) => panels.find((x) => x.id === id);
   const screen = p.screens.find((s) => s.id === sel) ?? p.screens[0]!;
+  const wiringErrors = cableRuns(screen, lookup).errors;
 
   const withPanels = (): Project => {
     const used = new Set(p.screens.flatMap((s) => s.cabinets.map((c) => c.panelId)));
@@ -119,11 +121,13 @@ export function LedPlanner() {
               <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={png.dims} onChange={(e) => setPng({ ...png, dims: e.target.checked })} />Cotas</label>
               <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={png.numbers} onChange={(e) => setPng({ ...png, numbers: e.target.checked })} />Números</label>
               <Btn onClick={() => exportPng(p, screen, lookup, png)}><ImageDown size={16} />Descargar PNG</Btn>
+              <Btn variant="outline" disabled={wiringErrors.length > 0} onClick={() => exportPng(p, screen, lookup, { ...png, wiring: true })}><ImageDown size={16} />Pixel Plot · Cableado</Btn>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <Field label="Hoja"><select className={inputCls} value={pdf.size} onChange={(e) => setPdf({ ...pdf, size: e.target.value as PdfOpts["size"] })}><option value="a4">A4</option><option value="a3">A3</option></select></Field>
               <Field label="Orientación"><select className={inputCls} value={pdf.orientation} onChange={(e) => setPdf({ ...pdf, orientation: e.target.value as PdfOpts["orientation"] })}><option value="landscape">Horizontal</option><option value="portrait">Vertical</option></select></Field>
               <Btn onClick={() => exportPdf(withPanels(), lookup, pdf, pro)}><FileDown size={16} />Descargar PDF</Btn>
+              <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={pdf.wiring ?? false} onChange={(e) => setPdf({ ...pdf, wiring: e.target.checked })} />Incluir cableado</label>
             </div>
           </div>
           {msg && <div className="mt-2"><Notice kind={msg.kind}>{msg.text}</Notice></div>}
