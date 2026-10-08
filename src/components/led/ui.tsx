@@ -35,10 +35,10 @@ export function Btn({ children, onClick, variant = "default", className, disable
 
 export function Card({ title, children, className, actions }: { title?: string; children: ReactNode; className?: string; actions?: ReactNode }) {
   return (
-    <section className={cn("min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4", className)}>
+    <section className={cn("min-w-0 rounded-md border border-border bg-card p-3 sm:p-4", className)}>
       {(title || actions) && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          {title && <h2 className="text-sm font-extrabold uppercase tracking-wide text-secondary-foreground">{title}</h2>}
+          {title && <h2 className="text-sm font-extrabold text-foreground">{title}</h2>}
           {actions}
         </div>
       )}

@@ -4,7 +4,8 @@ import { fmtM, fmtN, gridColsRows, near169, screenStats, suggestSizes } from "@/
 import { computeCurve } from "@/lib/led/geometry";
 import { buildMix, mergeSmall, mixCompat, mixOptions, splitLarge, type MixGoal } from "@/lib/led/mix";
 import { uniformCabinets, type GeometryType, type Screen } from "@/lib/led/model";
-import { frontPlan, topPlan } from "@/lib/led/plan";
+import { frontPlan, topPlan, wiringPlan } from "@/lib/led/plan";
+import { cableRuns } from "@/lib/led/cabling";
 import { allPanels, update, useStore } from "@/lib/led/store";
 import { cabDims } from "@/lib/led/engine";
 import { PlanView } from "./PlanView";
@@ -24,6 +25,7 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
   const [wantH, setWantH] = useState(2.5);
   const [showDims, setShowDims] = useState(true);
   const [showNums, setShowNums] = useState(true);
+  const [showWiring, setShowWiring] = useState(false);
   // mezcla
   const [smallId, setSmallId] = useState("r500-p39");
   const [largeId, setLargeId] = useState("r1000-p39");
@@ -39,6 +41,8 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
   const po = { dims: showDims, numbers: showNums, ink, muted: "#6b7c8f" };
   const fp = useMemo(() => frontPlan(screen, lookup, po), [screen, panels.length, showDims, showNums, dark]);
   const tp = useMemo(() => topPlan(screen, lookup, po), [screen, panels.length, showDims, showNums, dark]);
+  const wiring = cableRuns(screen, lookup);
+  const wp = wiringPlan(screen, lookup, po, st0.project.screens.findIndex((s) => s.id === screen.id));
   const colW = screen.cabinets[0] ? cabDims(screen.cabinets[0], panel).w : panel.widthMm;
   const curve = computeCurve(screen.geometry, cols, colW, panel);
 
@@ -189,6 +193,10 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
         </Card>
         <Card title="Plano" actions={
           <div className="flex flex-wrap gap-3 text-xs">
+            <div className="flex gap-1" role="group" aria-label="Tipo de plano">
+              <Btn className="h-7 px-2 text-xs" variant={!showWiring ? "default" : "outline"} onClick={() => setShowWiring(false)}>Gabinetes</Btn>
+              <Btn className="h-7 px-2 text-xs" variant={showWiring ? "default" : "outline"} onClick={() => setShowWiring(true)}>Cableado</Btn>
+            </div>
             <label className="flex items-center gap-1"><input type="checkbox" checked={showDims} onChange={(e) => setShowDims(e.target.checked)} />Cotas</label>
             <label className="flex items-center gap-1"><input type="checkbox" checked={showNums} onChange={(e) => setShowNums(e.target.checked)} />Numeración</label>
             <select className="rounded border border-input bg-background px-1" value={screen.numbering.order} onChange={(e) => mod((s) => { s.numbering.order = e.target.value as never; })}>
@@ -198,8 +206,9 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
               <option value="tl">Inicio ↖</option><option value="tr">Inicio ↗</option><option value="bl">Inicio ↙</option><option value="br">Inicio ↘</option>
             </select>
           </div>}>
-          <PlanView plan={fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={onPlanClick} />
-          {tp && <div className="mt-4 border-t border-border pt-3"><p className="mb-1 text-xs font-bold text-muted-foreground">Vista superior (esquema)</p><PlanView plan={tp} className="h-auto max-h-[45vh] w-full" /></div>}
+          {showWiring && wiring.errors.map((e) => <Notice key={e} kind="error">{e}</Notice>)}
+          <PlanView plan={showWiring ? wp : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={showWiring ? undefined : onPlanClick} />
+          {tp && !showWiring && <div className="mt-4 border-t border-border pt-3"><p className="mb-1 text-xs font-bold text-muted-foreground">Vista superior (esquema)</p><PlanView plan={tp} className="h-auto max-h-[45vh] w-full" /></div>}
         </Card>
       </div>
     </div>

@@ -47,6 +47,15 @@
   --color-ring: var(--ring);
   --color-warning: var(--warning);
   --color-deep: var(--deep);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-divider: var(--brand-divider);
+  --color-scene-1: var(--scene-1);
+  --color-scene-2: var(--scene-2);
+  --color-scene-3: var(--scene-3);
+  --color-scene-4: var(--scene-4);
+  --color-scene-5: var(--scene-5);
+  --color-scene-6: var(--scene-6);
+  --color-scene-label: var(--scene-label);
   --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
   --color-ring-offset-background: var(--background);
   --color-chart-1: var(--chart-1);
@@ -65,8 +74,17 @@
 }
 
 :root {
-  --radius: 0.6rem;
-  --background: oklch(0.985 0.004 240);
+  --radius: 0.375rem;
+  --brand-surface: oklch(1 0 0);
+  --brand-divider: oklch(0.9 0.01 240);
+  --scene-1: oklch(0.494 0.171 257);
+  --scene-2: oklch(0.535 0.099 175);
+  --scene-3: oklch(0.551 0.145 43);
+  --scene-4: oklch(0.533 0.163 351);
+  --scene-5: oklch(0.506 0.156 296);
+  --scene-6: oklch(0.493 0.041 235);
+  --scene-label: oklch(1 0 0);
+  --background: oklch(0.968 0.003 240);
   --foreground: oklch(0.2 0.03 250);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.2 0.03 250);
@@ -76,7 +94,7 @@
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.95 0.02 240);
   --secondary-foreground: oklch(0.47 0.16 254); /* #015FBF */
-  --muted: oklch(0.955 0.01 240);
+  --muted: oklch(0.952 0.004 240);
   --muted-foreground: oklch(0.5 0.03 250);
   --accent: oklch(0.76 0.14 225); /* #22C1FF */
   --accent-foreground: oklch(0.2 0.05 250);
@@ -103,9 +121,9 @@
 }
 
 .dark {
-  --background: oklch(0.17 0.025 250);
+  --background: oklch(0.16 0.006 250);
   --foreground: oklch(0.95 0.01 240);
-  --card: oklch(0.21 0.03 250);
+  --card: oklch(0.21 0.008 250);
   --card-foreground: oklch(0.95 0.01 240);
   --popover: oklch(0.21 0.03 250);
   --popover-foreground: oklch(0.95 0.01 240);
@@ -113,7 +131,7 @@
   --primary-foreground: oklch(0.15 0.03 250);
   --secondary: oklch(0.27 0.04 250);
   --secondary-foreground: oklch(0.85 0.08 230);
-  --muted: oklch(0.25 0.03 250);
+  --muted: oklch(0.26 0.01 250);
   --muted-foreground: oklch(0.7 0.03 245);
   --accent: oklch(0.76 0.14 225);
   --accent-foreground: oklch(0.15 0.03 250);
@@ -147,5 +165,6 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    letter-spacing: 0;
   }
 }

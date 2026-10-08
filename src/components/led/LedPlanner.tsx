@@ -12,6 +12,7 @@ import { PanelDialog } from "./PanelDialog";
 import { ProEditor } from "./ProEditor";
 import { ScreenConfig } from "./ScreenConfig";
 import { Btn, Card, Field, inputCls, Notice } from "./ui";
+import { cableRuns } from "@/lib/led/cabling";
 
 export function LedPlanner() {
   const st = useStore();
@@ -21,7 +22,7 @@ export function LedPlanner() {
   const [tab, setTab] = useState<"diseño" | "mapeo" | "catalogo">("diseño");
   const [panelDlg, setPanelDlg] = useState<{ open: boolean; initial?: Panel }>({ open: false });
   const [png, setPng] = useState<PngOpts>({ bg: "blanco", dims: true, numbers: true, width: 2400, view: "ambas" });
-  const [pdf, setPdf] = useState<PdfOpts>({ size: "a4", orientation: "landscape" });
+  const [pdf, setPdf] = useState<PdfOpts>({ size: "a4", orientation: "landscape", wiring: true });
   const [msg, setMsg] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [openList, setOpenList] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -39,6 +40,7 @@ export function LedPlanner() {
   const panels = allPanels(st);
   const lookup = (id: string) => panels.find((x) => x.id === id);
   const screen = p.screens.find((s) => s.id === sel) ?? p.screens[0]!;
+  const wiringErrors = cableRuns(screen, lookup).errors;
 
   const withPanels = (): Project => {
     const used = new Set(p.screens.flatMap((s) => s.cabinets.map((c) => c.panelId)));
@@ -65,19 +67,18 @@ export function LedPlanner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto grid max-w-[1600px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 sm:flex sm:justify-between sm:px-4">
+      <header className="sticky top-0 z-30 border-b border-primary/30 bg-card/95 backdrop-blur">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 sm:flex sm:justify-between sm:px-4">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <img src={manssoLogo.url} alt="MANSSO TIP" className="h-8 w-auto shrink-0 sm:h-10" />
-            <div className="min-w-0 leading-tight">
-              <div className="truncate text-base font-black tracking-tight text-deep sm:text-lg">PIXEL <span className="font-semibold text-muted-foreground">· LED Planner</span></div>
-              <div className="hidden truncate text-[11px] text-muted-foreground sm:block">Una herramienta de Start Solution</div>
+            <div className="min-w-0 border-l-2 border-primary pl-3 leading-tight">
+              <h1 className="text-base font-black text-foreground sm:text-xl">MANSSO <span className="text-primary">PIXEL</span></h1>
+              <div className="mt-0.5 text-[10px] font-semibold text-muted-foreground sm:text-xs">LED Planner <span className="hidden sm:inline">· Una herramienta de Start Solution</span></div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <div className="flex rounded-full bg-muted p-0.5 text-xs font-bold" role="group" aria-label="Modo">
-              <button onClick={() => setPro(false)} className={`rounded-full px-2.5 py-1.5 sm:px-3 ${!pro ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Simple</button>
-              <button onClick={() => setPro(true)} className={`rounded-full px-2.5 py-1.5 sm:px-3 ${pro ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Pro</button>
+            <div className="flex rounded-md border border-border bg-muted p-0.5 text-xs font-bold" role="group" aria-label="Modo">
+              <Btn onClick={() => setPro(false)} variant={!pro ? "default" : "ghost"} className="h-8 px-2.5 text-xs sm:px-3">Simple</Btn>
+              <Btn onClick={() => setPro(true)} variant={pro ? "default" : "ghost"} className="h-8 px-2.5 text-xs sm:px-3">Pro</Btn>
             </div>
             <Btn variant="ghost" className="h-9 w-9 px-0" onClick={() => setDark(!dark)} title="Modo claro/oscuro">{dark ? <Sun size={18} /> : <Moon size={18} />}</Btn>
           </div>
@@ -120,11 +121,13 @@ export function LedPlanner() {
               <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={png.dims} onChange={(e) => setPng({ ...png, dims: e.target.checked })} />Cotas</label>
               <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={png.numbers} onChange={(e) => setPng({ ...png, numbers: e.target.checked })} />Números</label>
               <Btn onClick={() => exportPng(p, screen, lookup, png)}><ImageDown size={16} />Descargar PNG</Btn>
+              <Btn variant="outline" disabled={wiringErrors.length > 0} onClick={() => exportPng(p, screen, lookup, { ...png, wiring: true })}><ImageDown size={16} />Pixel Plot · Cableado</Btn>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <Field label="Hoja"><select className={inputCls} value={pdf.size} onChange={(e) => setPdf({ ...pdf, size: e.target.value as PdfOpts["size"] })}><option value="a4">A4</option><option value="a3">A3</option></select></Field>
               <Field label="Orientación"><select className={inputCls} value={pdf.orientation} onChange={(e) => setPdf({ ...pdf, orientation: e.target.value as PdfOpts["orientation"] })}><option value="landscape">Horizontal</option><option value="portrait">Vertical</option></select></Field>
               <Btn onClick={() => exportPdf(withPanels(), lookup, pdf, pro)}><FileDown size={16} />Descargar PDF</Btn>
+              <label className="flex h-9 items-center gap-1 text-xs"><input type="checkbox" checked={pdf.wiring ?? false} onChange={(e) => setPdf({ ...pdf, wiring: e.target.checked })} />Incluir cableado</label>
             </div>
           </div>
           {msg && <div className="mt-2"><Notice kind={msg.kind}>{msg.text}</Notice></div>}
@@ -184,20 +187,21 @@ export function LedPlanner() {
         ) : null}
       </main>
 
-      <footer className="mt-6 border-t border-border bg-card">
-        <div className="mx-auto flex max-w-[1600px] flex-col items-center gap-4 px-4 py-6 text-center">
+      <footer className="mt-6 border-t border-primary/30 bg-card">
+        <div className="mx-auto flex max-w-[1600px] flex-col items-center gap-3 px-4 py-5 text-center">
           <p className="text-sm text-muted-foreground">
             Desarrollado por{" "}
             <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer" className="font-bold text-secondary-foreground underline-offset-2 hover:underline">Start Solution</a>
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-            <img src={manssoLogo.url} alt="MANSSO TIP" className="h-10 w-auto sm:h-12" />
-            <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer"><img src={startLogo.url} alt="Start Solution" className="h-9 w-auto sm:h-11 dark:brightness-200" /></a>
+          <div className="flex max-w-full items-center justify-center gap-6 rounded-md bg-brand-surface px-5 py-3 sm:gap-8">
+            <img src={manssoLogo.url} alt="MANSSO TIP" className="h-auto max-h-11 w-28 object-contain sm:w-32" />
+            <span className="h-8 w-px shrink-0 bg-brand-divider" aria-hidden="true" />
+            <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer"><img src={startLogo.url} alt="Start Solution" className="h-auto max-h-11 w-28 object-contain sm:w-32" /></a>
           </div>
           <nav className="flex flex-wrap justify-center gap-2 text-sm" aria-label="Redes">
-            <a href="https://www.instagram.com/manssotip/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border px-4 hover:bg-muted"><Instagram size={16} />@manssotip</a>
-            <a href="https://www.instagram.com/startsolution.ar/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border px-4 hover:bg-muted"><Instagram size={16} />@startsolution.ar</a>
-            <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border px-4 hover:bg-muted"><Globe size={16} />startsolution.com.ar</a>
+            <a href="https://www.instagram.com/manssotip/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 px-2 text-muted-foreground hover:text-primary"><Instagram size={16} />@manssotip</a>
+            <a href="https://www.instagram.com/startsolution.ar/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 px-2 text-muted-foreground hover:text-primary"><Instagram size={16} />@startsolution.ar</a>
+            <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 px-2 text-muted-foreground hover:text-primary"><Globe size={16} />startsolution.com.ar</a>
           </nav>
           <p className="max-w-2xl text-[11px] text-muted-foreground">MANSSO PIXEL documenta geometría y configuración. No valida estructura, rigging ni montaje mecánico. Datos guardados sólo en este navegador.</p>
         </div>

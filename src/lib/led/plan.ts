@@ -4,6 +4,7 @@ import { realPitch } from "./catalog";
 import { cabDims, numberCabinets, screenStats, fmtM, type PanelLookup } from "./engine";
 import { computeCurve } from "./geometry";
 import type { Project, Screen } from "./model";
+import { cableRuns, CABLING_NOTE } from "./cabling";
 
 export type Prim =
   | { t: "rect"; x: number; y: number; w: number; h: number; fill?: string; stroke?: string; lw?: number; hatch?: boolean }
@@ -14,6 +15,9 @@ export type Prim =
 export interface Plan { prims: Prim[]; minX: number; minY: number; maxX: number; maxY: number; title: string }
 
 export const TYPE_COLORS = ["#189BEA", "#22C1FF", "#015FBF", "#7FB8E6", "#0B3E7A", "#9ADCF7"];
+// Matches the semantic scene color tokens; shared by SVG and document renderers.
+export const SCREEN_COLORS = ["#015FBF", "#087F6B", "#B54D1C", "#AD3975", "#6D50B5", "#496575"];
+export const screenColor = (index: number) => SCREEN_COLORS[((index % SCREEN_COLORS.length) + SCREEN_COLORS.length) % SCREEN_COLORS.length] ?? SCREEN_COLORS[0] ?? "#015FBF";
 export interface PlanOpts { dims: boolean; numbers: boolean; ink: string; muted: string }
 
 function dimH(p: Prim[], x1: number, x2: number, y: number, label: string, fs: number, o: PlanOpts) {
@@ -140,9 +144,50 @@ export function layoutPlan(p: Project, lookup: PanelLookup, o: PlanOpts): Plan {
   prims.push({ t: "text", x: fs * 0.5, y: -fs * 0.5, s: "Origen (0,0)", size: fs * 0.7, color: "#E5484D" });
   p.screens.forEach((s, i) => {
     const st = screenStats(s, lookup);
-    prims.push({ t: "rect", x: s.x, y: s.y, w: st.widthMm, h: st.heightMm, fill: TYPE_COLORS[i % TYPE_COLORS.length], stroke: o.ink, lw: fs * 0.08 });
+    prims.push({ t: "rect", x: s.x, y: s.y, w: st.widthMm, h: st.heightMm, fill: screenColor(i), stroke: o.ink, lw: fs * 0.08 });
     prims.push({ t: "text", x: s.x + st.widthMm / 2, y: s.y + st.heightMm / 2, s: s.name, size: fs, color: "#ffffff", align: "center", bold: true });
     prims.push({ t: "text", x: s.x, y: s.y + st.heightMm + fs * 1.2, s: `X ${fmtM(s.x)} · Y ${fmtM(s.y)} · ${fmtM(st.widthMm)} × ${fmtM(st.heightMm)}`, size: fs * 0.6, color: o.ink });
   });
   return { prims, minX: minX - fs * 3, minY: minY - fs * 3, maxX: maxX + fs * 3, maxY: maxY + fs * 3, title: "Layout general (posiciones desde el origen)" };
+}
+
+/** Developed front view: numbered whole-cabinet chains, arrows and port loads. */
+export function wiringPlan(s: Screen, lookup: PanelLookup, o: PlanOpts, index = 0): Plan {
+  const stats = screenStats(s, lookup), fs = Math.max(stats.widthMm, stats.heightMm, 1000) / 45;
+  const { runs, errors } = cableRuns(s, lookup);
+  const prims: Prim[] = [];
+  const color = screenColor(index);
+  let minX = 0, minY = 0, maxX = stats.widthMm, maxY = stats.heightMm;
+  for (const c of s.cabinets) {
+    const panel = lookup(c.panelId); if (!panel) continue;
+    const d = cabDims(c, panel);
+    minX = Math.min(minX, c.x); minY = Math.min(minY, c.y);
+    maxX = Math.max(maxX, c.x + d.w); maxY = Math.max(maxY, c.y + d.h);
+    prims.push({ t: "rect", x: c.x, y: c.y, w: d.w, h: d.h, fill: color, stroke: o.ink, lw: fs * 0.05 });
+  }
+  for (const run of runs) {
+    const centers = run.cabinets.flatMap((c) => {
+      const panel = lookup(c.panelId); if (!panel) return [];
+      const d = cabDims(c, panel);
+      return [{ x: c.x + d.w / 2, y: c.y + d.h / 2, w: d.w, h: d.h }];
+    });
+    centers.forEach((point, i) => {
+      const next = centers[i + 1];
+      if (next) {
+        prims.push({ t: "line", x1: point.x, y1: point.y, x2: next.x, y2: next.y, stroke: "#ffffff", lw: fs * 0.07 });
+        const dx = next.x - point.x, dy = next.y - point.y, length = Math.hypot(dx, dy);
+        if (length) {
+          const ux = dx / length, uy = dy / length, x = point.x + dx * 0.65, y = point.y + dy * 0.65, a = Math.min(point.w, point.h) * 0.08;
+          prims.push({ t: "poly", pts: [{ x: x - ux * a - uy * a * 0.6, y: y - uy * a + ux * a * 0.6 }, { x, y }, { x: x - ux * a + uy * a * 0.6, y: y - uy * a - ux * a * 0.6 }], stroke: "#ffffff", lw: fs * 0.08 });
+        }
+      }
+      const size = Math.min(point.w, point.h) / 7;
+      prims.push({ t: "text", x: point.x, y: point.y - size * 0.8, s: `P${run.port}:${String(i + 1).padStart(2, "0")}${i === 0 ? " IN" : ""}`, size, color: "#ffffff", align: "center", bold: true });
+    });
+  }
+  let y = maxY + fs * 2;
+  prims.push({ t: "text", x: minX, y, s: `${s.name} · ${stats.resX}×${stats.resY} px · ${runs.length} cables / puertos de datos`, size: fs, color: o.ink, bold: true });
+  for (const run of runs) { y += fs * 1.4; prims.push({ t: "text", x: minX, y, s: `P${run.port} · IN → ${run.cabinets.length} gabinetes · ${run.pixels.toLocaleString("es-AR")} / 650.000 px`, size: fs * 0.85, color: o.ink }); }
+  for (const text of [...errors, ...CABLING_NOTE.split(" · ")]) { y += fs * 1.4; prims.push({ t: "text", x: minX, y, s: text, size: fs * 0.65, color: o.ink }); }
+  return { prims, minX: minX - fs * 2, minY: minY - fs * 2, maxX: Math.max(maxX + fs * 2, minX + fs * 55), maxY: y + fs * 2, title: `${s.name} — cableado de datos (vista frontal desarrollada)` };
 }
