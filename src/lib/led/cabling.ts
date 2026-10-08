@@ -16,8 +16,8 @@ export function cableNeighbors(a: Cabinet, b: Cabinet, lookup: PanelLookup): boo
   const da = cabDims(a, pa), db = cabDims(b, pb);
   const overlapX = Math.min(a.x + da.w, b.x + db.w) - Math.max(a.x, b.x);
   const overlapY = Math.min(a.y + da.h, b.y + db.h) - Math.max(a.y, b.y);
-  return ((Math.abs(a.x + da.w - b.x) < 0.5 || Math.abs(b.x + db.w - a.x) < 0.5) && overlapY > 0.5)
-    || ((Math.abs(a.y + da.h - b.y) < 0.5 || Math.abs(b.y + db.h - a.y) < 0.5) && overlapX > 0.5);
+  return ((Math.abs(a.x + da.w - b.x) < 5 || Math.abs(b.x + db.w - a.x) < 5) && overlapY > 5)
+    || ((Math.abs(a.y + da.h - b.y) < 5 || Math.abs(b.y + db.h - a.y) < 5) && overlapX > 5);
 }
 
 /** Center-to-center orthogonal path, bending on the cabinets' shared edge. */
@@ -27,7 +27,7 @@ export function cablePath(a: Cabinet, b: Cabinet, lookup: PanelLookup): { x: num
   const da = cabDims(a, pa), db = cabDims(b, pb);
   const start = { x: a.x + da.w / 2, y: a.y + da.h / 2 }, end = { x: b.x + db.w / 2, y: b.y + db.h / 2 };
   if (start.x === end.x || start.y === end.y) return [start, end];
-  const horizontal = Math.abs(a.x + da.w - b.x) < 0.5 || Math.abs(b.x + db.w - a.x) < 0.5;
+  const horizontal = Math.abs(a.x + da.w - b.x) < 5 || Math.abs(b.x + db.w - a.x) < 5;
   if (horizontal) {
     const x = a.x < b.x ? b.x : a.x;
     return [start, { x, y: start.y }, { x, y: end.y }, end];

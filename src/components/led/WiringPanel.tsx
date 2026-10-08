@@ -25,7 +25,7 @@ export function WiringPanel({ screen, dark }: { screen: Screen; dark: boolean })
               <option value="tl">↖ Arriba izq.</option><option value="tr">↗ Arriba der.</option><option value="bl">↙ Abajo izq.</option><option value="br">↘ Abajo der.</option>
             </select></label>
         </div>
-        <p className="mb-2 rounded-md bg-muted p-2 text-xs"><b>Recorrido óptimo:</b> serpentina por {route.axis}, desde {CORNER_LABEL[route.start]} · {runs.length} puerto{runs.length === 1 ? "" : "s"}</p>
+        <p className="mb-2 rounded-md bg-muted p-2 text-xs"><b>Recorrido óptimo:</b> serpentina por {route.axis}, desde {CORNER_LABEL[route.start]} · {runs.length} puerto{runs.length === 1 ? "" : "s"} (mínimo posible: {Math.max(1, Math.ceil(runs.reduce((a, r) => a + r.pixels, 0) / MAX_PIXELS_PER_CABLE))})</p>
         {errors.map((e) => <Notice key={e} kind="error">{e}</Notice>)}
         <ul className="space-y-1.5">
           {runs.map((r) => (
