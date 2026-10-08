@@ -7,5 +7,7 @@
 - [x] Tests, README despliegue subdominio/subruta
 - [x] Pie: Desarrollado por Start Solution, logos e Instagram
 - [x] Optimización móvil y pie en pantallas chicas
+- [ ] Concentrar logos y unificar presentación tecnológica
+- [ ] Estabilizar y comprobar zoom del editor 2D Pro
 - [ ] Probar XML en Arena real (bloqueado: falta preset exportado por tu versión de Arena)
 - [ ] Vista 3D esquemática (opcional)
