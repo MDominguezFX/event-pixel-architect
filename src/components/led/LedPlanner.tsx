@@ -119,7 +119,7 @@ export function LedPlanner() {
         {pro && (
           <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1 text-sm font-bold">
             {(["diseño", "cableado", "mapeo", "catalogo"] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-md px-4 py-1.5 capitalize ${tab === t ? "bg-card shadow" : "text-muted-foreground"}`}>{t === "catalogo" ? "4 · Catálogo" : t === "mapeo" ? "3 · Canvas y Arena" : t === "cableado" ? "2 · Cableado" : "1 · Diseño"}</button>
+              <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-md px-4 py-1.5 ${tab === t ? "bg-card shadow" : "text-muted-foreground"}`}>{t === "catalogo" ? "4 · Catálogo" : t === "mapeo" ? "3 · Canvas y Arena" : t === "cableado" ? "2 · Cableado" : "1 · Diseño"}</button>
             ))}
           </div>
         )}
