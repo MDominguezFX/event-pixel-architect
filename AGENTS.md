@@ -18,3 +18,4 @@
 - The scene editor uses d3-zoom as the single viewport transform authority for wheel, background pan, touch pinch, fit and zoom buttons — prevents divergent transforms and keeps cursor anchoring consistent.
 - Data cable planning is a pure module grouping whole cabinets in configured numbering order; wiring vector plans color cabinets per data port (portColor) and share screen-index colors with the scene and document renderers — native pixel loads and exported paths stay consistent.
 - PDF export is section-driven (PdfOpts.sections + screenIds) chosen in an export dialog — avoids dumping every page by default.
+- Free-angle rotation is schematic: Cabinet.angleDeg and Slice.rotation (degrees, about the box center) never change native pixels; 90° cabinet turns still use the rotated flag so resolution swaps stay exact.
