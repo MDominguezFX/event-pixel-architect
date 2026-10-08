@@ -4,7 +4,7 @@ import { realPitch } from "./catalog";
 import { cabDims, numberCabinets, screenStats, fmtM, type PanelLookup } from "./engine";
 import { computeCurve } from "./geometry";
 import type { Project, Screen } from "./model";
-import { cableRuns, CABLING_NOTE } from "./cabling";
+import { cableRuns, cablePath, CABLING_NOTE } from "./cabling";
 
 export type Prim =
   | { t: "rect"; x: number; y: number; w: number; h: number; fill?: string; stroke?: string; lw?: number; hatch?: boolean; rot?: number }
@@ -176,15 +176,20 @@ export function wiringPlan(s: Screen, lookup: PanelLookup, o: PlanOpts, index = 
     const centers = run.cabinets.flatMap((c) => {
       const panel = lookup(c.panelId); if (!panel) return [];
       const d = cabDims(c, panel);
-      return [{ x: c.x + d.w / 2, y: c.y + d.h / 2, w: d.w, h: d.h }];
+      return [{ x: c.x + d.w / 2, y: c.y + d.h / 2, w: d.w, h: d.h, cabinet: c }];
     });
     centers.forEach((point, i) => {
       const next = centers[i + 1];
       if (next) {
-        prims.push({ t: "line", x1: point.x, y1: point.y, x2: next.x, y2: next.y, stroke: "#ffffff", lw: fs * 0.07 });
-        const dx = next.x - point.x, dy = next.y - point.y, length = Math.hypot(dx, dy);
+        const path = cablePath(point.cabinet, next.cabinet, lookup);
+        path.forEach((a, j) => {
+          const b = path[j + 1];
+          if (b) prims.push({ t: "line", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: "#ffffff", lw: fs * 0.07 });
+        });
+        const from = path.at(-2) ?? point;
+        const dx = next.x - from.x, dy = next.y - from.y, length = Math.hypot(dx, dy);
         if (length) {
-          const ux = dx / length, uy = dy / length, x = point.x + dx * 0.65, y = point.y + dy * 0.65, a = Math.min(point.w, point.h) * 0.08;
+          const ux = dx / length, uy = dy / length, x = from.x + dx * 0.65, y = from.y + dy * 0.65, a = Math.min(point.w, point.h) * 0.08;
           prims.push({ t: "poly", pts: [{ x: x - ux * a - uy * a * 0.6, y: y - uy * a + ux * a * 0.6 }, { x, y }, { x: x - ux * a + uy * a * 0.6, y: y - uy * a - ux * a * 0.6 }], stroke: "#ffffff", lw: fs * 0.08 });
         }
       }
