@@ -48,6 +48,8 @@ export interface Slice {
   input: Rect;
   output: Rect;
   outputIndex: number;
+  /** Rotación del contenido en la salida (grados horarios). output es la caja final ya rotada. */
+  rotation?: 0 | 90 | 180 | 270;
 }
 export interface Mapping {
   canvasW: number;
