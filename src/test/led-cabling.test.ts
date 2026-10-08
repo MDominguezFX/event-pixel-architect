@@ -45,7 +45,7 @@ describe("slices, Arena y puertos", () => {
     expect(outputQuad(s)[0]).toEqual({ x: 150, y: -50 });
   });
   it("giros parciales de 5° se acumulan y vuelven a 0 en 360°", () => {
-    let s = { id: "a", name: "A", input: { x: 0, y: 0, w: 10, h: 10 }, output: { x: 0, y: 0, w: 10, h: 10 }, outputIndex: 0 };
+    let s: import("@/lib/led/model").Slice = { id: "a", name: "A", input: { x: 0, y: 0, w: 10, h: 10 }, output: { x: 0, y: 0, w: 10, h: 10 }, outputIndex: 0 };
     s = rotateSlice(s, 5); s = rotateSlice(s, 5);
     expect(s.rotation).toBe(10);
     expect(rotateSlice(s, 350).rotation).toBe(0);

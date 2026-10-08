@@ -8,7 +8,7 @@ import { frontPlan, topPlan, wiringPlan } from "@/lib/led/plan";
 import { cableRuns } from "@/lib/led/cabling";
 import { allPanels, update, useStore } from "@/lib/led/store";
 import { cabDims } from "@/lib/led/engine";
-import { rotateGroup } from "@/lib/led/edit";
+import { rotateFree, rotateGroup } from "@/lib/led/edit";
 import { PlanView } from "./PlanView";
 import { Btn, Card, Field, inputCls, Notice, Num, Stat } from "./ui";
 
@@ -37,6 +37,8 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
   const [addPanelId, setAddPanelId] = useState("");
   const [editMsg, setEditMsg] = useState<string | null>(null);
   const [pick, setPick] = useState<Set<string>>(new Set());
+  const [manualDeg, setManualDeg] = useState<number | undefined>(5);
+  const spin = (delta: number) => { if (!pick.size || !delta) return; setEditMsg(null); mod((s) => { s.cabinets = rotateFree(s.cabinets, pick, delta, lookup); }); };
   const rotatePick = (ids: Set<string>) => {
     const next = rotateGroup(screen.cabinets, ids, lookup);
     if (!next) return setEditMsg("Girado se superpone con otros gabinetes: mové o quitá los que estorban, o elegí otro grupo.");
@@ -251,7 +253,12 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
                 <Btn key={k} className="h-7 px-2 text-xs" variant={tool === k ? "default" : "outline"} onClick={() => { setTool(k); setEditMsg(null); }}>{l}</Btn>
               ))}
               {tool === "girar" && <>
-                <Btn className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => rotatePick(pick)}>↻ Girar {pick.size === 1 ? "panel" : `grupo (${pick.size})`}</Btn>
+                <Btn className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => rotatePick(pick)}>↻ 90° {pick.size === 1 ? "panel" : `grupo (${pick.size})`}</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 5° antihorario" onClick={() => spin(-5)}>↺ 5°</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title="Girar 5° horario" onClick={() => spin(5)}>↻ 5°</Btn>
+                <span className="flex items-center gap-1"><Num className="h-7 w-16" value={manualDeg} onChange={setManualDeg} step={0.5} />°
+                  <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size || !manualDeg} onClick={() => spin(manualDeg ?? 0)}>Aplicar</Btn></span>
+                <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size || !screen.cabinets.some((k) => pick.has(k.id) && k.angleDeg)} title="Quitar giro libre" onClick={() => mod((s) => { s.cabinets.forEach((k) => { if (pick.has(k.id)) delete k.angleDeg; }); })}>0°</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => rotatePick(new Set(screen.cabinets.map((k) => k.id)))}>↻ Girar pantalla completa</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => setPick(new Set(screen.cabinets.map((k) => k.id)))}>Seleccionar todos</Btn>
                 <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => setPick(new Set())}>Limpiar</Btn>
@@ -265,12 +272,12 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
                 <Btn variant="outline" className="h-7 px-2 text-xs" title="Agregar fila abajo" onClick={() => edge("row", true)}>+ Fila</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" title="Quitar última fila" onClick={() => edge("row", false)}>− Fila</Btn>
               </span>
-              <p className="w-full text-muted-foreground">{tool === "agregar" ? "Clic en un espacio vacío junto a la pantalla para sumar un gabinete." : tool === "quitar" ? "Clic en un gabinete para quitarlo." : tool === "girar" ? "Clic en uno o varios gabinetes para seleccionarlos (borde naranja) y después Girar: un panel gira en su lugar, un grupo gira 90° como bloque." : "Clic en un gabinete grande para dividirlo en dos chicos, o en uno chico para unirlo."}</p>
+              <p className="w-full text-muted-foreground">{tool === "agregar" ? "Clic en un espacio vacío junto a la pantalla para sumar un gabinete." : tool === "quitar" ? "Clic en un gabinete para quitarlo." : tool === "girar" ? "Clic en uno o varios gabinetes para seleccionarlos (borde naranja) y después Girar: un panel gira en su lugar, un grupo gira como bloque. 90° cambia la orientación real; ↺/↻ 5° o grados a mano son giros parciales de esquema (no cambian píxeles ni validan montaje)." : "Clic en un gabinete grande para dividirlo en dos chicos, o en uno chico para unirlo."}</p>
             </div>
           )}
           {editMsg && !showWiring && <div className="mb-2"><Notice>{editMsg}</Notice></div>}
           {showWiring && wiring.errors.map((e) => <Notice key={e} kind="error">{e}</Notice>)}
-          <PlanView plan={showWiring ? wp : tool === "girar" && pick.size ? { ...fp, prims: [...fp.prims, ...screen.cabinets.filter((k) => pick.has(k.id)).map((k) => { const b = box(k); return { t: "rect" as const, x: b.x, y: b.y, w: b.w, h: b.h, stroke: "#F5A524", lw: Math.min(b.w, b.h) * 0.06 }; })] } : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={showWiring ? undefined : onPlanClick} />
+          <PlanView plan={showWiring ? wp : tool === "girar" && pick.size ? { ...fp, prims: [...fp.prims, ...screen.cabinets.filter((k) => pick.has(k.id)).map((k) => { const b = box(k); return { t: "rect" as const, x: b.x, y: b.y, w: b.w, h: b.h, stroke: "#F5A524", lw: Math.min(b.w, b.h) * 0.06, rot: k.angleDeg || undefined }; })] } : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={showWiring ? undefined : onPlanClick} />
           {tp && !showWiring && <div className="mt-4 border-t border-border pt-3"><p className="mb-1 text-xs font-bold text-muted-foreground">Vista superior (esquema)</p><PlanView plan={tp} className="h-auto max-h-[45vh] w-full" /></div>}
         </Card>
       </div>
