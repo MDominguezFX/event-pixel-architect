@@ -82,7 +82,18 @@ export async function exportPng(project: Project, screen: Screen, lookup: PanelL
 }
 
 // ---------- PDF ----------
-export interface PdfOpts { size: "a4" | "a3"; orientation: "landscape" | "portrait"; wiring?: boolean }
+export type PdfSection = "layout" | "frontal" | "cableado" | "superior" | "datos" | "slices";
+export interface PdfOpts { size: "a4" | "a3"; orientation: "landscape" | "portrait"; wiring?: boolean; sections?: PdfSection[]; screenIds?: string[] }
+
+/** Pages the PDF will contain for the given selection (same rules as exportPdf). */
+export function pdfPageCount(project: Project, lookup: PanelLookup, o: PdfOpts, pro: boolean) {
+  const sec = new Set(o.sections ?? ["layout", "frontal", "superior", "datos", "slices", ...(o.wiring ? ["cableado" as const] : [])]);
+  const screens = project.screens.filter((s) => !o.screenIds || o.screenIds.includes(s.id));
+  let n = sec.has("layout") && project.screens.length > 1 ? 1 : 0;
+  for (const s of screens) n += (sec.has("frontal") ? 1 : 0) + (sec.has("cableado") ? 1 : 0) + (sec.has("datos") ? 1 : 0) + (sec.has("superior") && s.geometry.type !== "plana" && topPlan(s, lookup, { dims: true, numbers: true, ink: "#000", muted: "#000" }) ? 1 : 0);
+  if (pro && sec.has("slices") && project.mapping.slices.length) n += Math.ceil(project.mapping.slices.length / 50);
+  return n;
+}
 
 function hexRgb(h: string): [number, number, number] {
   const m = h.replace("#", ""); return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)];
@@ -135,14 +146,16 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     doc.text(`MANSSO TIP / Una herramienta de Start Solution · pág. ${page}`, PW - M, PH - 6, { align: "right" });
   };
   const box = { x: M, y: 26, w: PW - 2 * M, h: PH - 40 };
+  const sec = new Set(o.sections ?? ["layout", "frontal", "superior", "datos", "slices", ...(o.wiring ? ["cableado" as const] : [])]);
+  const screens = project.screens.filter((s) => !o.screenIds || o.screenIds.includes(s.id));
 
-  if (project.screens.length > 1) { frame("Layout general"); drawPdf(doc, layoutPlan(project, lookup, po), box); }
-  for (const s of project.screens) {
-    frame(`${s.name} — plano frontal desarrollado`);
-    drawPdf(doc, frontPlan(s, lookup, po), box);
-    if (o.wiring) { frame(`${s.name} — Pixel Plot / Cableado de datos`); drawPdf(doc, wiringPlan(s, lookup, po, project.screens.indexOf(s)), box); }
+  if (sec.has("layout") && project.screens.length > 1) { frame("Layout general"); drawPdf(doc, layoutPlan(project, lookup, po), box); }
+  for (const s of screens) {
+    if (sec.has("frontal")) { frame(`${s.name} — plano frontal desarrollado`); drawPdf(doc, frontPlan(s, lookup, po), box); }
+    if (sec.has("cableado")) { frame(`${s.name} — Pixel Plot / Cableado de datos`); drawPdf(doc, wiringPlan(s, lookup, po, project.screens.indexOf(s)), box); }
     const tp = topPlan(s, lookup, po);
-    if (tp) { frame(`${s.name} — vista superior`); drawPdf(doc, tp, box); }
+    if (tp && sec.has("superior")) { frame(`${s.name} — vista superior`); drawPdf(doc, tp, box); }
+    if (!sec.has("datos")) continue;
     // Tabla de equipamiento
     frame(`${s.name} — datos y equipamiento`);
     const st = screenStats(s, lookup);
@@ -170,7 +183,7 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
       y += 6;
     }
   }
-  if (pro && project.mapping.slices.length) {
+  if (pro && sec.has("slices") && project.mapping.slices.length) {
     frame("Mapa de slices (canvas → salida)");
     doc.setFontSize(8);
     let y = 30;
@@ -178,9 +191,10 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     doc.setFont("helvetica", "bold"); doc.text("Nombre · Entrada (x,y,w,h) · Salida · (x,y,w,h)", M, y); doc.setFont("helvetica", "normal"); y += 5;
     for (const s of project.mapping.slices) {
       if (y > PH - 14) { frame("Mapa de slices (cont.)"); y = 30; doc.setFontSize(8); }
-      doc.text(`${s.name} · ${s.input.x},${s.input.y},${s.input.w},${s.input.h} · ${project.mapping.outputs[s.outputIndex]?.name ?? "?"} · ${s.output.x},${s.output.y},${s.output.w},${s.output.h}`, M, y); y += 4.5;
+      doc.text(`${s.name} · ${s.input.x},${s.input.y},${s.input.w},${s.input.h} · ${project.mapping.outputs[s.outputIndex]?.name ?? "?"} · ${s.output.x},${s.output.y},${s.output.w},${s.output.h}${s.rotation ? ` · rot ${s.rotation}°` : ""}`, M, y); y += 4.5;
     }
   }
+  if (!page) frame("Sin secciones seleccionadas");
   doc.save(`${safe(project.name)}_rev${safe(project.revision)}.pdf`);
 }
 
