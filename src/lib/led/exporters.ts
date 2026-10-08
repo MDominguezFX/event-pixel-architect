@@ -27,6 +27,8 @@ function drawCanvas(ctx: CanvasRenderingContext2D, plan: Plan, box: { x: number;
   const X = (x: number) => ox + x * k, Y = (y: number) => oy + y * k;
   for (const p of plan.prims) {
     if (p.t === "rect") {
+      ctx.save();
+      if (p.rot) { const cx = X(p.x + p.w / 2), cy = Y(p.y + p.h / 2); ctx.translate(cx, cy); ctx.rotate((p.rot * Math.PI) / 180); ctx.translate(-cx, -cy); }
       if (p.fill) { ctx.fillStyle = p.fill; ctx.fillRect(X(p.x), Y(p.y), p.w * k, p.h * k); }
       if (p.hatch) {
         ctx.save(); ctx.beginPath(); ctx.rect(X(p.x), Y(p.y), p.w * k, p.h * k); ctx.clip();
@@ -36,6 +38,7 @@ function drawCanvas(ctx: CanvasRenderingContext2D, plan: Plan, box: { x: number;
         ctx.restore();
       }
       if (p.stroke) { ctx.strokeStyle = p.stroke; ctx.lineWidth = Math.max(0.5, (p.lw ?? 1) * k); ctx.strokeRect(X(p.x), Y(p.y), p.w * k, p.h * k); }
+      ctx.restore();
     } else if (p.t === "line") {
       ctx.strokeStyle = p.stroke; ctx.lineWidth = Math.max(0.5, p.lw * k);
       ctx.beginPath(); ctx.moveTo(X(p.x1), Y(p.y1)); ctx.lineTo(X(p.x2), Y(p.y2)); ctx.stroke();
@@ -108,7 +111,14 @@ function drawPdf(doc: jsPDF, plan: Plan, box: { x: number; y: number; w: number;
     if (p.t === "rect") {
       if (p.fill) doc.setFillColor(...hexRgb(p.fill));
       if (p.stroke) { doc.setDrawColor(...hexRgb(p.stroke)); doc.setLineWidth(Math.max(0.05, (p.lw ?? 0) * k)); }
-      doc.rect(X(p.x), Y(p.y), p.w * k, p.h * k, p.fill && p.stroke ? "FD" : p.fill ? "F" : "S");
+      const style = p.fill && p.stroke ? "FD" : p.fill ? "F" : "S";
+      if (p.rot) {
+        const r = (p.rot * Math.PI) / 180, cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+        const pts = [[p.x, p.y], [p.x + p.w, p.y], [p.x + p.w, p.y + p.h], [p.x, p.y + p.h]].map(([x, y]) => [X(cx + (x! - cx) * Math.cos(r) - (y! - cy) * Math.sin(r)), Y(cy + (x! - cx) * Math.sin(r) + (y! - cy) * Math.cos(r))] as [number, number]);
+        doc.lines(pts.slice(1).map((q, i) => [q[0] - pts[i]![0], q[1] - pts[i]![1]]), pts[0]![0], pts[0]![1], [1, 1], style, true);
+        continue;
+      }
+      doc.rect(X(p.x), Y(p.y), p.w * k, p.h * k, style);
       if (p.hatch) { doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.1); doc.line(X(p.x), Y(p.y + p.h), X(p.x + p.w), Y(p.y)); }
     } else if (p.t === "line") {
       doc.setDrawColor(...hexRgb(p.stroke)); doc.setLineWidth(Math.max(0.05, p.lw * k)); doc.line(X(p.x1), Y(p.y1), X(p.x2), Y(p.y2));

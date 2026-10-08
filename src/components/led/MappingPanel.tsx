@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { screenStats } from "@/lib/led/engine";
 import { exportCsv, exportSlicesJson, download } from "@/lib/led/exporters";
-import { mappingWarnings, rotateSlice, slicesByCabinet, slicesByScreen } from "@/lib/led/mapping";
+import { mappingWarnings, normDeg, rotateSlices, slicesByCabinet, slicesByScreen } from "@/lib/led/mapping";
 import { uid, type Rect } from "@/lib/led/model";
 import { analyzeTemplate, ARENA_TARGET, exportArenaXml, generateArenaXml, type TemplateInfo } from "@/lib/led/resolume";
 import { allPanels, update, useStore } from "@/lib/led/store";
@@ -15,6 +15,9 @@ export function MappingPanel() {
   const panels = allPanels(st);
   const lookup = (id: string) => panels.find((x) => x.id === id);
   const [tpl, setTpl] = useState<TemplateInfo | null>(null);
+  const [pick, setPick] = useState<Set<string>>(new Set());
+  const [deg, setDeg] = useState<number | undefined>(5);
+  const spin = (ids: Set<string>, d: number) => d && update((pr) => { pr.mapping.slices = rotateSlices(pr.mapping.slices, ids, d); return pr; });
   const warns = mappingWarnings(p);
   const total = p.screens.reduce((a, s) => a + screenStats(s, lookup).resX, 0);
   const maxH = Math.max(...p.screens.map((s) => screenStats(s, lookup).resY));
@@ -51,17 +54,28 @@ export function MappingPanel() {
           <Btn variant="outline" className="h-8 text-xs" onClick={() => update((pr) => { pr.mapping.slices = slicesByCabinet(pr, lookup); return pr; })}>Por gabinete</Btn>
           <Btn variant="outline" className="h-8 text-xs" onClick={() => update((pr) => { pr.mapping.slices.push({ id: uid(), name: `Grupo ${pr.mapping.slices.length + 1}`, input: { x: 0, y: 0, w: 256, h: 256 }, output: { x: 0, y: 0, w: 256, h: 256 }, outputIndex: 0 }); return pr; })}>+ Grupo</Btn>
         </div>}>
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-md bg-muted p-1.5 text-xs">
+          <span className="font-bold text-muted-foreground">Girar {pick.size ? (pick.size === 1 ? "slice" : `grupo (${pick.size})`) : "— marcá slices"}:</span>
+          <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => spin(pick, -5)}>↺ 5°</Btn>
+          <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => spin(pick, 5)}>↻ 5°</Btn>
+          <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => spin(pick, 90)}>↻ 90°</Btn>
+          <span className="flex items-center gap-1"><Num className="h-7 w-16" value={deg} onChange={setDeg} step={0.5} />°
+            <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size || !deg} onClick={() => spin(pick, deg ?? 0)}>Aplicar</Btn></span>
+          <Btn variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => setPick(pick.size === m.slices.length ? new Set() : new Set(m.slices.map((x) => x.id)))}>{pick.size === m.slices.length && m.slices.length ? "Ninguno" : "Todos"}</Btn>
+          <p className="w-full text-muted-foreground">Un slice gira sobre su centro; un grupo gira alrededor de su centro común. También podés escribir el ángulo exacto en la columna Rot.</p>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-xs">
-            <thead><tr className="text-left text-muted-foreground"><th className="p-1">Nombre</th><th>in X</th><th>in Y</th><th>in W</th><th>in H</th><th>Salida</th><th>out X</th><th>out Y</th><th>out W</th><th>out H</th><th>Rot.</th><th /></tr></thead>
+          <table className="w-full min-w-[860px] text-xs">
+            <thead><tr className="text-left text-muted-foreground"><th /><th className="p-1">Nombre</th><th>in X</th><th>in Y</th><th>in W</th><th>in H</th><th>Salida</th><th>out X</th><th>out Y</th><th>out W</th><th>out H</th><th>Rot.</th><th /></tr></thead>
             <tbody>
               {m.slices.map((s, i) => (
                 <tr key={s.id} className="border-t border-border">
+                  <td className="p-0.5"><input type="checkbox" aria-label={`Seleccionar ${s.name}`} checked={pick.has(s.id)} onChange={() => setPick((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })} /></td>
                   <td className="p-1"><input className={inputCls + " h-7"} value={s.name} onChange={(e) => update((pr) => { pr.mapping.slices[i]!.name = e.target.value; return pr; })} /></td>
                   {(["x", "y", "w", "h"] as const).map((f) => <td key={"i" + f} className="p-0.5"><Num className="h-7 w-16" value={s.input[f]} onChange={(v) => setRect(i, "input", f, v)} /></td>)}
                   <td className="p-0.5"><select className={inputCls + " h-7"} value={s.outputIndex} onChange={(e) => update((pr) => { pr.mapping.slices[i]!.outputIndex = Number(e.target.value); return pr; })}>{m.outputs.map((o, j) => <option key={j} value={j}>{o.name}</option>)}</select></td>
                   {(["x", "y", "w", "h"] as const).map((f) => <td key={"o" + f} className="p-0.5"><Num className="h-7 w-16" value={s.output[f]} onChange={(v) => setRect(i, "output", f, v)} /></td>)}
-                  <td className="p-0.5"><Btn variant="outline" className="h-7 px-2 text-xs" title="Girar 90° en la salida" onClick={() => update((pr) => { pr.mapping.slices[i] = rotateSlice(pr.mapping.slices[i]!); return pr; })}>↻ {s.rotation ?? 0}°</Btn></td>
+                  <td className="p-0.5"><Num className="h-7 w-16" step={0.5} value={s.rotation ?? 0} onChange={(v) => update((pr) => { pr.mapping.slices[i]!.rotation = normDeg(v ?? 0); return pr; })} /></td>
                   <td><Btn variant="ghost" className="h-7 px-2" onClick={() => update((pr) => { pr.mapping.slices.splice(i, 1); return pr; })}>✕</Btn></td>
                 </tr>
               ))}

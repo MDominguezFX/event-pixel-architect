@@ -32,17 +32,33 @@ describe("650.000 píxeles por cable", () => {
     expect(cableRuns(screen, lookup).runs.reduce((sum, r) => sum + r.pixels, 0)).toBe(786432);
   });
 });
-import { outputQuad, rotateSlice } from "@/lib/led/mapping";
+import { outputQuad, rotateSlice, rotateSlices } from "@/lib/led/mapping";
+import { rotateFree } from "@/lib/led/edit";
 import { generateArenaXml } from "@/lib/led/resolume";
 import { newProject } from "@/lib/led/model";
 import { portColor } from "@/lib/led/plan";
 
 describe("slices, Arena y puertos", () => {
-  it("girar 90° intercambia la caja de salida y rota las esquinas", () => {
+  it("girar un slice 90° lo rota sobre su centro", () => {
     const s = rotateSlice({ id: "a", name: "A", input: { x: 0, y: 0, w: 200, h: 100 }, output: { x: 0, y: 0, w: 200, h: 100 }, outputIndex: 0 });
     expect(s.rotation).toBe(90);
-    expect(s.output).toEqual({ x: 0, y: 0, w: 100, h: 200 });
-    expect(outputQuad(s)[0]).toEqual({ x: 100, y: 0 });
+    expect(outputQuad(s)[0]).toEqual({ x: 150, y: -50 });
+  });
+  it("giros parciales de 5° se acumulan y vuelven a 0 en 360°", () => {
+    let s: import("@/lib/led/model").Slice = { id: "a", name: "A", input: { x: 0, y: 0, w: 10, h: 10 }, output: { x: 0, y: 0, w: 10, h: 10 }, outputIndex: 0 };
+    s = rotateSlice(s, 5); s = rotateSlice(s, 5);
+    expect(s.rotation).toBe(10);
+    expect(rotateSlice(s, 350).rotation).toBe(0);
+  });
+  it("un grupo de slices gira alrededor de su centro común", () => {
+    const mk = (id: string, x: number) => ({ id, name: id, input: { x, y: 0, w: 100, h: 100 }, output: { x, y: 0, w: 100, h: 100 }, outputIndex: 0 });
+    const r = rotateSlices([mk("a", 0), mk("b", 100)], new Set(["a", "b"]), 180);
+    expect(r.map((s) => s.output.x)).toEqual([100, 0]);
+  });
+  it("giro libre de gabinetes no cambia la cantidad y acumula el ángulo", () => {
+    const P = BUILTIN_PANELS[0]!;
+    const r = rotateFree([{ id: "a", panelId: P.id, x: 0, y: 0, rotated: false }], new Set(["a"]), 5, (id) => BUILTIN_PANELS.find((p) => p.id === id));
+    expect(r[0]).toMatchObject({ angleDeg: 5, x: 0, y: 0 });
   });
   it("genera XML de Arena sin plantilla con un slice por slice del proyecto", () => {
     const p = newProject(BUILTIN_PANELS[6]!);

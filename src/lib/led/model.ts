@@ -16,6 +16,7 @@ export interface Cabinet {
   x: number;
   y: number;
   rotated: boolean; // girado 90°: intercambia medidas y resolución
+  angleDeg?: number; // giro libre adicional (esquema), sobre el centro del gabinete; no altera píxeles
 }
 
 export interface Geometry {
@@ -48,8 +49,8 @@ export interface Slice {
   input: Rect;
   output: Rect;
   outputIndex: number;
-  /** Rotación del contenido en la salida (grados horarios). output es la caja final ya rotada. */
-  rotation?: 0 | 90 | 180 | 270;
+  /** Rotación horaria en la salida, en grados (admite parciales). output es la caja sin rotar; gira sobre su centro. */
+  rotation?: number;
 }
 export interface Mapping {
   canvasW: number;
