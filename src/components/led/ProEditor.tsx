@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { select } from "d3-selection";
+import { zoom as createZoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import { Copy, Redo2, Trash2, Undo2, ZoomIn, ZoomOut, Plus } from "lucide-react";
 import { screenStats, fmtM } from "@/lib/led/engine";
 import { newScreen, uid, type Screen, type ScreenKind } from "@/lib/led/model";
 import { allPanels, redo, undo, update, useStore } from "@/lib/led/store";
-import { TYPE_COLORS } from "@/lib/led/plan";
 import { Btn, Card, Field, inputCls, Num } from "./ui";
 
 const KINDS: { id: ScreenKind; label: string }[] = [
@@ -23,6 +24,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
   const [showDims, setShowDims] = useState(true);
   const drag = useRef<{ id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
   const sel = p.screens.find((s) => s.id === selected);
 
@@ -35,17 +37,33 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
   }, []);
 
-  const mod = (id: string, fn: (s: Screen) => void) => update((pr) => { fn(pr.screens.find((x) => x.id === id)!); return pr; });
+  const mod = (id: string, fn: (s: Screen) => void) => update((pr) => { const screen = pr.screens.find((x) => x.id === id); if (screen) fn(screen); return pr; });
   const sn = (v: number) => (snap > 0 ? Math.round(v / snap) * snap : Math.round(v));
   const vw = 1000, vh = 560;
 
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const behavior = createZoom<SVGSVGElement, unknown>()
+      .extent([[0, 0], [vw, vh]])
+      .scaleExtent([0.005, 1])
+      .filter((e) => e.type === "wheel" || (!e.button && !(e.target as Element).closest("[data-screen]")))
+      .wheelDelta((e) => -e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1) * 0.0015 / Math.LN2)
+      .on("zoom", (e) => setView({ k: e.transform.k, x: -e.transform.x / e.transform.k, y: -e.transform.y / e.transform.k }));
+    zoomRef.current = behavior;
+    select(svg).call(behavior).on("dblclick.zoom", null);
+    return () => { select(svg).on(".zoom", null); zoomRef.current = null; };
+  }, []);
+
   const onDown = (e: React.PointerEvent, id?: string) => {
+    if (!id) return;
     e.stopPropagation(); (e.target as Element).setPointerCapture?.(e.pointerId);
-    const s = id ? p.screens.find((x) => x.id === id)! : null;
+    const s = p.screens.find((x) => x.id === id);
+    if (!s) return;
     drag.current = { id, sx: e.clientX, sy: e.clientY, ox: s ? s.x : view.x, oy: s ? s.y : view.y, moved: false };
     if (id) onSelect(id);
   };
-  const scale = () => { const r = svgRef.current!.getBoundingClientRect(); return vw / r.width / view.k; };
+  const scale = () => { const r = svgRef.current?.getBoundingClientRect(); return r?.width ? vw / r.width / view.k : 0; };
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current; if (!d) return;
     const dx = (e.clientX - d.sx) * scale(), dy = (e.clientY - d.sy) * scale();
@@ -58,15 +76,15 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     if (d?.id && live) { const L = live; mod(d.id, (s) => { s.x = L.x; s.y = L.y; }); }
     setLive(null);
   };
-  const zoom = (f: number) => setView((v) => {
-    const cx = v.x + vw / v.k / 2, cy = v.y + vh / v.k / 2, k = Math.min(1, Math.max(0.005, v.k * f));
-    return { k, x: cx - vw / k / 2, y: cy - vh / k / 2 };
-  });
+  const zoom = (f: number) => {
+    if (svgRef.current && zoomRef.current) select(svgRef.current).call(zoomRef.current.scaleBy, f);
+  };
   const fit = () => {
     let a = 0, b = 0, c = 1000, d = 1000;
     p.screens.forEach((s) => { const t = screenStats(s, lookup); a = Math.min(a, s.x); b = Math.min(b, s.y); c = Math.max(c, s.x + t.widthMm); d = Math.max(d, s.y + t.heightMm); });
-    const k = Math.min(vw / (c - a), vh / (d - b)) * 0.85;
-    setView({ k, x: a - (vw / k - (c - a)) / 2, y: b - (vh / k - (d - b)) / 2 });
+    const k = Math.max(0.005, Math.min(1, Math.min(vw / (c - a), vh / (d - b)) * 0.85));
+    const x = a - (vw / k - (c - a)) / 2, y = b - (vh / k - (d - b)) / 2;
+    if (svgRef.current && zoomRef.current) select(svgRef.current).call(zoomRef.current.transform, zoomIdentity.translate(-x * k, -y * k).scale(k));
   };
   useEffect(fit, [p.screens.length]);
 
@@ -77,19 +95,21 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     if (mode === "distH") {
       const sorted = [...ss].sort((a, b) => a.x - b.x);
       const widths = sorted.map((s) => screenStats(s, lookup).widthMm);
-      const first = sorted[0]!, lastI = sorted.length - 1;
-      const span = sorted[lastI]!.x + widths[lastI]! - first.x;
+      const first = sorted[0], lastI = sorted.length - 1, last = sorted[lastI];
+      if (!first || !last) return pr;
+      const span = last.x + (widths[lastI] ?? 0) - first.x;
       const gap = (span - widths.reduce((a, b) => a + b, 0)) / Math.max(1, lastI);
-      let x = first.x; sorted.forEach((s, i) => { s.x = Math.round(x); x += widths[i]! + gap; });
+      let x = first.x; sorted.forEach((s, i) => { s.x = Math.round(x); x += (widths[i] ?? 0) + gap; });
     }
     return pr;
   });
 
   const addScreen = (kind: ScreenKind) => {
-    const pnl = lookup("r500-p39")!;
+    const pnl = lookup("r500-p39");
+    if (!pnl) return;
     const dims: Record<ScreenKind, [number, number]> = { principal: [8, 5], lateral: [4, 6], totem: [2, 6], banner: [16, 1], cabina: [6, 2], arco: [12, 4], libre: [4, 4] };
     const [c, r] = dims[kind];
-    const s = newScreen(pnl, KINDS.find((k) => k.id === kind)!.label, c, r);
+    const s = newScreen(pnl, KINDS.find((k) => k.id === kind)?.label ?? "Pantalla", c, r);
     s.kind = kind;
     const maxX = Math.max(0, ...p.screens.map((x) => x.x + screenStats(x, lookup).widthMm));
     s.x = maxX + 1000;
@@ -124,23 +144,21 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
         <label className="flex items-center gap-1"><input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />Ver grilla</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />Etiquetas</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={showDims} onChange={(e) => setShowDims(e.target.checked)} />Cotas</label>
-        <span className="text-muted-foreground">Arrastrá pantallas · arrastrá el fondo para desplazar</span>
       </div>
-      <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} className="aspect-[1000/560] w-full touch-none rounded-lg border border-border bg-muted"
-        onPointerDown={(e) => onDown(e)} onPointerMove={onMove} onPointerUp={onUp}
-        onWheel={(e) => zoom(e.deltaY < 0 ? 1.1 : 0.9)}>
+      <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} aria-label="Editor de escena 2D" className="aspect-[1000/560] w-full touch-none rounded-md border border-border bg-muted cursor-grab active:cursor-grabbing"
+        onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         <g transform={`scale(${view.k}) translate(${-view.x} ${-view.y})`}>
           {gxs.map((x) => <line key={"x" + x} x1={x} y1={view.y} x2={x} y2={view.y + vh / view.k} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
           {gys.map((y) => <line key={"y" + y} x1={view.x} y1={y} x2={view.x + vw / view.k} y2={y} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
-          <path d={`M${-fs * 2} 0H${fs * 2}M0 ${-fs * 2}V${fs * 2}`} stroke="#E5484D" strokeWidth={2 / view.k} />
+          <path d={`M${-fs * 2} 0H${fs * 2}M0 ${-fs * 2}V${fs * 2}`} stroke="currentColor" className="text-muted-foreground" strokeWidth={2 / view.k} />
           {p.screens.map((s, i) => {
             const t = screenStats(s, lookup);
             const pos = live?.id === s.id ? live : s;
             return (
-              <g key={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
-                <rect x={pos.x} y={pos.y} width={t.widthMm} height={t.heightMm} fill={TYPE_COLORS[i % TYPE_COLORS.length]} fillOpacity={0.85}
-                  stroke={s.id === selected ? "#E5484D" : "#0B1B2B"} strokeWidth={(s.id === selected ? 3 : 1) / view.k} />
-                {showLabels && <text x={pos.x + t.widthMm / 2} y={pos.y + t.heightMm / 2} fontSize={fs} fill="#fff" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
+              <g key={s.id} data-screen={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
+                <rect x={pos.x} y={pos.y} width={t.widthMm} height={t.heightMm} className={s.id === selected ? "fill-primary stroke-accent" : "fill-deep stroke-primary"} fillOpacity={0.9}
+                  strokeWidth={(s.id === selected ? 3 : 1) / view.k} />
+                {showLabels && <text x={pos.x + t.widthMm / 2} y={pos.y + t.heightMm / 2} fontSize={fs} className="fill-primary-foreground" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
                 {showDims && <text x={pos.x} y={pos.y - fs * 0.4} fontSize={fs * 0.8} fill="currentColor" className="text-foreground" pointerEvents="none">{fmtM(t.widthMm)} × {fmtM(t.heightMm)} @ ({fmtM(pos.x)}, {fmtM(pos.y)})</text>}
               </g>
             );
@@ -163,7 +181,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
           <Field label="Y mm"><Num value={sel.y} onChange={(v) => mod(sel.id, (s) => { s.y = Math.round(v ?? 0); })} /></Field>
           <div className="col-span-2 flex items-end gap-1 sm:col-span-1">
             <Btn variant="outline" title="Duplicar" onClick={() => { const c = structuredClone(sel); c.id = uid(); c.name += " (copia)"; c.x += 1000; c.cabinets.forEach((k) => (k.id = uid())); update((pr) => { pr.screens.push(c); return pr; }); onSelect(c.id); }}><Plus size={14} /><Copy size={14} /></Btn>
-            <Btn variant="danger" title="Eliminar" disabled={p.screens.length < 2} onClick={() => { update((pr) => { pr.screens = pr.screens.filter((x) => x.id !== sel.id); return pr; }); onSelect(p.screens.find((x) => x.id !== sel.id)!.id); }}><Trash2 size={14} /></Btn>
+            <Btn variant="danger" title="Eliminar" disabled={p.screens.length < 2} onClick={() => { const next = p.screens.find((x) => x.id !== sel.id); if (!next) return; update((pr) => { pr.screens = pr.screens.filter((x) => x.id !== sel.id); return pr; }); onSelect(next.id); }}><Trash2 size={14} /></Btn>
           </div>
         </div>
       )}
