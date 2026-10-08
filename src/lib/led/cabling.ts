@@ -42,7 +42,7 @@ export function cableRuns(screen: Screen, lookup: PanelLookup) {
   const pref = screen.numbering.start;
   const candidates: CableRoute[] = [pref, ...CORNERS.filter((c) => c !== pref)].flatMap((start) => [{ start, axis: "columnas" as const }, { start, axis: "filas" as const }]);
   let best = { route: fallback, runs: group(screen, lookup, fallback) };
-  const score = (r: CableRun[]) => [r.length, Math.max(0, ...r.map((x) => x.pixels)) - Math.min(...r.map((x) => x.pixels))];
+  const score = (r: CableRun[]): [number, number] => [r.length, Math.max(0, ...r.map((x) => x.pixels)) - Math.min(...r.map((x) => x.pixels))];
   for (const route of candidates) {
     const runs = group(screen, lookup, route);
     const [a, b] = score(runs), [c, d] = score(best.runs);
