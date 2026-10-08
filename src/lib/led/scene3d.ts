@@ -16,7 +16,6 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
     if (!first) return;
     const dims = s.cabinets.map((c) => { const pn = lookup(c.panelId); return pn ? cabDims(c, pn) : null; });
     const L = Math.max(0, ...s.cabinets.map((c, i) => c.x + (dims[i]?.w ?? 0)));
-    const H = Math.max(0, ...s.cabinets.map((c, i) => c.y + (dims[i]?.h ?? 0)));
     const { cols } = gridColsRows(s, lookup);
     const colW = dims[0]?.w ?? first.widthMm;
     const curve = s.geometry.type === "plana" ? null : computeCurve(s.geometry, cols, colW, first);
@@ -25,7 +24,7 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
     const sign = s.geometry.type === "convexa" ? -1 : 1;
     s.cabinets.forEach((c, i) => {
       const d = dims[i]; if (!d) return;
-      const cy = -(s.y + c.y + d.h / 2) + H; // suelo en y = 0 para la pantalla con y = 0
+      const cy = -(s.y + c.y + d.h / 2);
       const sc = c.x + d.w / 2;
       let x = s.x + sc, z = 0, rotY = 0;
       if (R) {
@@ -37,5 +36,6 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
       out.push({ id: c.id, screenId: s.id, x: x / 1000, y: cy / 1000, z: z / 1000, rotY, tilt: ((c.angleDeg ?? 0) * Math.PI) / 180, w: d.w / 1000, h: d.h / 1000, color });
     });
   });
-  return out;
+  const floor = Math.min(...out.map((c) => c.y - c.h / 2));
+  return out.map((c) => ({ ...c, y: c.y - floor })); // la base más baja apoya en el suelo (y = 0)
 }

@@ -92,3 +92,23 @@ describe("girar paneles", () => {
     expect(rotateGroup(cabs, new Set(["a"]), lk)).toBeNull();
   });
 });
+
+import { scene3d } from "@/lib/led/scene3d";
+describe("vista 3D", () => {
+  const P = BUILTIN_PANELS.find((p) => p.widthMm === 500 && p.heightMm === 500)!;
+  const lk = (id: string) => BUILTIN_PANELS.find((p) => p.id === id);
+  it("una pantalla plana queda en z = 0 y apoyada en el suelo", () => {
+    const p = newProject(P); p.screens = [newScreen(P, "A", 4, 2)];
+    const c = scene3d(p, lk);
+    expect(c.length).toBe(8);
+    expect(c.every((k) => k.z === 0)).toBe(true);
+    expect(Math.min(...c.map((k) => k.y - k.h / 2))).toBeCloseTo(0);
+  });
+  it("un cilindro de 12 columnas cierra en un círculo", () => {
+    const p = newProject(P); const s = newScreen(P, "C", 12, 1); s.geometry.type = "cilindro"; p.screens = [s];
+    const c = scene3d(p, lk);
+    const R = (12 * 0.5) / (2 * Math.PI);
+    const cx = c.reduce((a, k) => a + k.x, 0) / 12, cz = c.reduce((a, k) => a + k.z, 0) / 12;
+    for (const k of c) expect(Math.hypot(k.x - cx, k.z - cz)).toBeCloseTo(R, 2);
+  });
+});
