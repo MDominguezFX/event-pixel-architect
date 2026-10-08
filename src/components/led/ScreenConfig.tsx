@@ -3,7 +3,7 @@ import { CATEGORIES, realPitch, type Panel } from "@/lib/led/catalog";
 import { fmtM, fmtN, gridColsRows, near169, screenStats, suggestSizes } from "@/lib/led/engine";
 import { computeCurve } from "@/lib/led/geometry";
 import { buildMix, mergeSmall, mixCompat, mixOptions, splitLarge, type MixGoal } from "@/lib/led/mix";
-import { uniformCabinets, type GeometryType, type Screen } from "@/lib/led/model";
+import { uid, uniformCabinets, type Cabinet, type GeometryType, type Screen } from "@/lib/led/model";
 import { frontPlan, topPlan, wiringPlan } from "@/lib/led/plan";
 import { cableRuns } from "@/lib/led/cabling";
 import { allPanels, update, useStore } from "@/lib/led/store";
@@ -32,6 +32,9 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
   const [goal, setGoal] = useState<MixGoal>("menos");
   const [stockS, setStockS] = useState<number | undefined>();
   const [stockL, setStockL] = useState<number | undefined>();
+  const [tool, setTool] = useState<"intercambiar" | "agregar" | "quitar" | "girar">("agregar");
+  const [addPanelId, setAddPanelId] = useState("");
+  const [editMsg, setEditMsg] = useState<string | null>(null);
   const [band, setBand] = useState<"arriba" | "abajo">("arriba");
 
   const mod = (fn: (s: Screen) => void) => update((p) => { const s = p.screens.find((x) => x.id === screen.id)!; fn(s); return p; });
@@ -53,12 +56,42 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
 
   const grouped = CATEGORIES.map((c) => ({ ...c, items: panels.filter((p) => p.category === c.id) })).filter((g) => g.items.length);
 
+  const box = (k: Cabinet) => { const pn = lookup(k.panelId); const d = pn ? cabDims(k, pn) : { w: 0, h: 0 }; return { x: k.x, y: k.y, w: d.w, h: d.h }; };
+  const hits = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
+  const normalize = (s: Screen) => { const mx = Math.min(...s.cabinets.map((c) => c.x)), my = Math.min(...s.cabinets.map((c) => c.y)); s.cabinets.forEach((c) => { c.x -= mx; c.y -= my; }); };
   const onPlanClick = (x: number, y: number) => {
-    if (!isMix || !small || !large) return;
-    const c = screen.cabinets.find((k) => { const d = cabDims(k, lookup(k.panelId)!); return x >= k.x && x <= k.x + d.w && y >= k.y && y <= k.y + d.h; });
+    const c = screen.cabinets.find((k) => { const b = box(k); return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h; });
+    if (tool === "agregar") {
+      if (c) return setEditMsg("Ese lugar ya tiene un gabinete: hacé clic en un espacio vacío junto a la pantalla.");
+      const pnl = lookup(addPanelId) ?? panel;
+      const w = rotated ? pnl.heightMm : pnl.widthMm, h = rotated ? pnl.widthMm : pnl.heightMm;
+      const nb = { x: Math.floor(x / w) * w, y: Math.floor(y / h) * h, w, h };
+      if (screen.cabinets.some((k) => hits(box(k), nb))) return setEditMsg("No entra un gabinete completo en ese lugar sin superponerse.");
+      setEditMsg(null);
+      return mod((s) => { s.cabinets.push({ id: uid(), panelId: pnl.id, x: nb.x, y: nb.y, rotated }); normalize(s); });
+    }
     if (!c) return;
+    if (tool === "quitar") {
+      if (screen.cabinets.length < 2) return setEditMsg("La pantalla necesita al menos un gabinete.");
+      setEditMsg(null);
+      return mod((s) => { s.cabinets = s.cabinets.filter((k) => k.id !== c.id); normalize(s); });
+    }
+    if (tool === "girar") {
+      const pn = lookup(c.panelId)!; const nb = { ...box(c), w: box(c).h, h: box(c).w };
+      if (screen.cabinets.some((k) => k.id !== c.id && hits(box(k), nb))) return setEditMsg(`${pn.name}: girado se superpone con otro gabinete.`);
+      setEditMsg(null);
+      return mod((s) => { const k = s.cabinets.find((q) => q.id === c.id); if (k) k.rotated = !k.rotated; });
+    }
+    if (!isMix || !small || !large) return setEditMsg("Intercambiar formatos funciona en pantallas mixtas compatibles (ver Mezcla).");
     mod((s) => { s.cabinets = c.panelId === large.id ? splitLarge(s.cabinets, c.id, small) : mergeSmall(s.cabinets, c.id, small, large); });
   };
+  const edge = (axis: "col" | "row", add: boolean) => mod((s) => {
+    const bs = s.cabinets.map((k) => ({ k, b: box(k) }));
+    const max = Math.max(...bs.map(({ b }) => (axis === "col" ? b.x + b.w : b.y + b.h)));
+    const lastOnes = bs.filter(({ b }) => Math.abs((axis === "col" ? b.x + b.w : b.y + b.h) - max) < 0.5);
+    if (add) lastOnes.forEach(({ k, b }) => s.cabinets.push({ ...k, id: uid(), x: axis === "col" ? b.x + b.w : b.x, y: axis === "row" ? b.y + b.h : b.y }));
+    else if (lastOnes.length < s.cabinets.length) s.cabinets = s.cabinets.filter((k) => !lastOnes.some((l) => l.k.id === k.id));
+  });
 
   return (
     <div className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
@@ -206,6 +239,25 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
               <option value="tl">Inicio ↖</option><option value="tr">Inicio ↗</option><option value="bl">Inicio ↙</option><option value="br">Inicio ↘</option>
             </select>
           </div>}>
+          {!showWiring && (
+            <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-md bg-muted p-1.5 text-xs">
+              <span className="font-bold text-muted-foreground">Editar en el plano:</span>
+              {([["agregar", "＋ Agregar"], ["quitar", "− Quitar"], ["girar", "↻ Girar"], ["intercambiar", "⇄ Intercambiar"]] as const).map(([k, l]) => (
+                <Btn key={k} className="h-7 px-2 text-xs" variant={tool === k ? "default" : "outline"} onClick={() => { setTool(k); setEditMsg(null); }}>{l}</Btn>
+              ))}
+              {tool === "agregar" && <select className="h-7 max-w-[180px] rounded border border-input bg-background px-1" value={addPanelId || panel.id} onChange={(e) => setAddPanelId(e.target.value)}>
+                {[...new Set([panel.id, ...stats.types.map((t) => t.panel.id), smallId, largeId])].map((id) => lookup(id)).filter((x): x is Panel => !!x).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </select>}
+              <span className="ml-auto flex gap-1">
+                <Btn variant="outline" className="h-7 px-2 text-xs" title="Agregar columna a la derecha" onClick={() => edge("col", true)}>+ Col</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" title="Quitar última columna" onClick={() => edge("col", false)}>− Col</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" title="Agregar fila abajo" onClick={() => edge("row", true)}>+ Fila</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" title="Quitar última fila" onClick={() => edge("row", false)}>− Fila</Btn>
+              </span>
+              <p className="w-full text-muted-foreground">{tool === "agregar" ? "Clic en un espacio vacío junto a la pantalla para sumar un gabinete." : tool === "quitar" ? "Clic en un gabinete para quitarlo." : tool === "girar" ? "Clic en un gabinete para girarlo 90°." : "Clic en un gabinete grande para dividirlo en dos chicos, o en uno chico para unirlo."}</p>
+            </div>
+          )}
+          {editMsg && !showWiring && <div className="mb-2"><Notice>{editMsg}</Notice></div>}
           {showWiring && wiring.errors.map((e) => <Notice key={e} kind="error">{e}</Notice>)}
           <PlanView plan={showWiring ? wp : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={showWiring ? undefined : onPlanClick} />
           {tp && !showWiring && <div className="mt-4 border-t border-border pt-3"><p className="mb-1 text-xs font-bold text-muted-foreground">Vista superior (esquema)</p><PlanView plan={tp} className="h-auto max-h-[45vh] w-full" /></div>}

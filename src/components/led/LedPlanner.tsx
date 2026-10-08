@@ -135,7 +135,7 @@ export function LedPlanner() {
             <ScreenConfig screen={screen} dark={dark} onNewPanel={() => setPanelDlg({ open: true })} />
           </>
         )}
-        {pro && (tab === "cableado" || tab === "mapeo") && p.screens.length > 1 && tab === "cableado" && (
+        {pro && tab === "cableado" && p.screens.length > 1 && (
           <div className="flex gap-1 overflow-x-auto">
             {p.screens.map((s) => <button key={s.id} onClick={() => setSel(s.id)} className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${s.id === screen.id ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{s.name}</button>)}
           </div>
