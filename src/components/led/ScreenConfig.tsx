@@ -262,6 +262,12 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
                   <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size || !manualDeg} onClick={() => spin(manualDeg ?? 0)}>Aplicar</Btn></span>
                 <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size || !screen.cabinets.some((k) => pick.has(k.id) && k.angleDeg)} title="Quitar giro libre" onClick={() => mod((s) => { s.cabinets.forEach((k) => { if (pick.has(k.id)) delete k.angleDeg; }); })}>0°</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => rotatePick(new Set(screen.cabinets.map((k) => k.id)))}>↻ Girar pantalla completa</Btn>
+                <span className="flex items-center gap-1 rounded border border-input bg-background px-1.5" title="Inclinación de montaje de toda la pantalla: 0° = vertical (pared), 90° = horizontal (techo). Esquemático: no cambia píxeles ni valida rigging.">
+                  <span className="font-bold text-muted-foreground">Montaje</span>
+                  <Num className="h-7 w-16" value={screen.mountTiltDeg ?? (screen.mount === "techo" ? 90 : 0)} step={5} onChange={(v) => mod((s) => { const d = Math.max(0, Math.min(90, v ?? 0)); s.mountTiltDeg = d; s.mount = d >= 90 ? "techo" : "pared"; })} />°
+                  <Btn variant="ghost" className="h-7 px-1.5 text-xs" onClick={() => mod((s) => { s.mountTiltDeg = 0; s.mount = "pared"; })}>Pared</Btn>
+                  <Btn variant="ghost" className="h-7 px-1.5 text-xs" onClick={() => mod((s) => { s.mountTiltDeg = 90; s.mount = "techo"; })}>Techo</Btn>
+                </span>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => setPick(new Set(screen.cabinets.map((k) => k.id)))}>Seleccionar todos</Btn>
                 <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => setPick(new Set())}>Limpiar</Btn>
               </>}
