@@ -28,7 +28,7 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
     // "techo" equivale a 90°; mountTiltDeg permite graduaciones parciales. Gira alrededor del borde inferior.
     const tiltDeg = s.mountTiltDeg ?? (s.mount === "techo" ? 90 : 0);
     const tilt = Math.max(0, Math.min(90, tiltDeg)) * Math.PI / 180;
-    if (tilt > 1e-6) lift.set(s.id, H / 1000 + 0.5); // flota a una altura esquemática sobre el suelo
+    if (tilt > 1e-6) lift.set(s.id, Math.max(0, s.mountHeightM ?? H / 1000 + 0.5)); // altura libre elegida por el usuario (o esquemática por defecto)
     s.cabinets.forEach((c, i) => {
       const d = dims[i]; if (!d) return;
       const cy = -(s.y + c.y + d.h / 2);
