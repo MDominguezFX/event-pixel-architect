@@ -40,6 +40,7 @@ export interface Screen {
   numbering: { order: NumberOrder; start: Corner };
   mixConfirmed: boolean; // usuario confirma compatibilidad mecánica de la mezcla
   mount?: "pared" | "techo"; // techo: la pantalla se dibuja horizontal en la vista 3D (esquemático)
+  mountTiltDeg?: number; // inclinación de montaje de toda la pantalla (0 = vertical/pared, 90 = techo horizontal); esquemático, no cambia píxeles
   manualRuns?: string[][]; // cableado manual: ids de gabinetes por puerto, en orden de conexión
 }
 
