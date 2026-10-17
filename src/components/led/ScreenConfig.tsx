@@ -123,11 +123,6 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
                 <option value="plana">Plana</option><option value="concava">Cóncava</option><option value="convexa">Convexa</option><option value="arco">Arco parcial</option><option value="cilindro">Cilindro 360°</option>
               </select>
             </Field>
-            <Field label="Montaje">
-              <select className={inputCls} value={screen.mount ?? "pared"} onChange={(e) => mod((s) => { s.mount = e.target.value as "pared" | "techo"; })}>
-                <option value="pared">Pared / vertical</option><option value="techo">Techo (horizontal)</option>
-              </select>
-            </Field>
             {screen.geometry.type !== "plana" && (
               <Field label="Construcción">
                 <select className={inputCls} value={screen.geometry.mode} onChange={(e) => mod((s) => { s.geometry.mode = e.target.value as "facetada" | "continua"; })}>

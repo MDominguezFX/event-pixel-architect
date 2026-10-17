@@ -39,9 +39,16 @@ export function scene2d(p: Project, lookup: PanelLookup, view: SceneView): Panel
     const vertices = ([[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]] as const).map(([a,b,d]) => {
       const x = a * c.w * 0.985 / 2, y = b * c.h * 0.985 / 2, z = d * 0.08 / 2;
       const rx = x * Math.cos(c.tilt) + y * Math.sin(c.tilt);
-      const ry = -x * Math.sin(c.tilt) + y * Math.cos(c.tilt);
-      return project((c.x + rx * Math.cos(c.rotY) + z * Math.sin(c.rotY)) * 1000,
-        (c.y + ry) * 1000, (c.z - rx * Math.sin(c.rotY) + z * Math.cos(c.rotY)) * 1000, view);
+      let ry = -x * Math.sin(c.tilt) + y * Math.cos(c.tilt);
+      let rz = z;
+      const rotX = c.rotX ?? 0; // inclinación de montaje (techo): mismo giro que en la vista 3D
+      if (rotX) {
+        const ny = ry * Math.cos(rotX) - rz * Math.sin(rotX);
+        rz = ry * Math.sin(rotX) + rz * Math.cos(rotX);
+        ry = ny;
+      }
+      return project((c.x + rx * Math.cos(c.rotY) + rz * Math.sin(c.rotY)) * 1000,
+        (c.y + ry) * 1000, (c.z - rx * Math.sin(c.rotY) + rz * Math.cos(c.rotY)) * 1000, view);
     });
     const faces = [[0,1,2,3],[0,4,5,1],[1,5,6,2],[2,6,7,3],[3,7,4,0],[4,7,6,5]].map((ids) => ids.flatMap((i) => {
       const point = vertices[i]; return point ? [point] : [];
