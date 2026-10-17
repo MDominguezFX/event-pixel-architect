@@ -268,6 +268,10 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
                   <Btn variant="ghost" className="h-7 px-1.5 text-xs" onClick={() => mod((s) => { s.mountTiltDeg = 0; s.mount = "pared"; })}>Pared</Btn>
                   <Btn variant="ghost" className="h-7 px-1.5 text-xs" onClick={() => mod((s) => { s.mountTiltDeg = 90; s.mount = "techo"; })}>Techo</Btn>
                 </span>
+                <span className="flex items-center gap-1 rounded border border-input bg-background px-1.5" title="Altura libre de la base de la pantalla sobre el suelo (solo vistas 3D/espacial). Sirve para que las pantallas de techo no choquen con las de pared.">
+                  <span className="font-bold text-muted-foreground">Altura</span>
+                  <Num className="h-7 w-16" value={screen.mountHeightM} step={0.1} onChange={(v) => mod((s) => { if (v == null) delete s.mountHeightM; else s.mountHeightM = Math.max(0, v); })} />m
+                </span>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => setPick(new Set(screen.cabinets.map((k) => k.id)))}>Seleccionar todos</Btn>
                 <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => setPick(new Set())}>Limpiar</Btn>
               </>}
