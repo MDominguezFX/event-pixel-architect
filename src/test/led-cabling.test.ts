@@ -112,3 +112,42 @@ describe("vista 3D", () => {
     for (const k of c) expect(Math.hypot(k.x - cx, k.z - cz)).toBeCloseTo(R, 2);
   });
 });
+
+describe("cableado manual", () => {
+  const P = BUILTIN_PANELS.find((p) => p.widthMm === 500 && p.heightMm === 500)!;
+  const lk = (id: string) => BUILTIN_PANELS.find((p) => p.id === id);
+  it("respeta los puertos dibujados por el usuario", () => {
+    const s = newScreen(P, "M", 4, 2);
+    const ids = s.cabinets.map((c) => c.id);
+    s.manualRuns = [ids.slice(0, 3), ids.slice(3)];
+    const r = cableRuns(s, lk);
+    expect(r.manual).toBe(true);
+    expect(r.runs.map((x) => x.cabinets.length)).toEqual([3, 5]);
+    expect(r.errors).toEqual([]);
+  });
+  it("marca error si un puerto manual supera 650.000 px", () => {
+    const big = BUILTIN_PANELS.find((p) => p.id === "r500-p26")!; // 192×192 = 36.864 px
+    const s = newScreen(big, "X", 6, 3); // 18 gab = 663.552 px
+    s.manualRuns = [s.cabinets.map((c) => c.id)];
+    const r = cableRuns(s, lk);
+    expect(r.errors.length).toBe(1);
+  });
+  it("avisa gabinetes sin asignar y saltos sin arista", () => {
+    const s = newScreen(P, "S", 4, 1);
+    s.manualRuns = [[s.cabinets[0]!.id, s.cabinets[2]!.id]]; // salta el del medio
+    const r = cableRuns(s, lk);
+    expect(r.warnings.some((w) => w.includes("sin cable asignado"))).toBe(true);
+    expect(r.warnings.some((w) => w.includes("sin arista"))).toBe(true);
+  });
+});
+
+describe("montaje en techo", () => {
+  const P = BUILTIN_PANELS.find((p) => p.widthMm === 500 && p.heightMm === 500)!;
+  const lk = (id: string) => BUILTIN_PANELS.find((p) => p.id === id);
+  it("una pantalla de techo queda horizontal y elevada en el 3D", () => {
+    const p = newProject(P); const s = newScreen(P, "T", 4, 2); s.mount = "techo"; p.screens = [s];
+    const c = scene3d(p, lk);
+    expect(c.every((k) => k.rotX === -Math.PI / 2)).toBe(true);
+    expect(Math.min(...c.map((k) => k.y))).toBeGreaterThan(1); // flota sobre el suelo
+  });
+});
