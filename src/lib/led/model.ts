@@ -39,6 +39,8 @@ export interface Screen {
   y: number;
   numbering: { order: NumberOrder; start: Corner };
   mixConfirmed: boolean; // usuario confirma compatibilidad mecánica de la mezcla
+  mount?: "pared" | "techo"; // techo: la pantalla se dibuja horizontal en la vista 3D (esquemático)
+  manualRuns?: string[][]; // cableado manual: ids de gabinetes por puerto, en orden de conexión
 }
 
 export interface Rect { x: number; y: number; w: number; h: number }

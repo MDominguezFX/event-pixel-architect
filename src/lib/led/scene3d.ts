@@ -6,7 +6,7 @@ import { computeCurve } from "./geometry";
 import type { Project } from "./model";
 import { screenColor } from "./plan";
 
-export interface Cab3D { id: string; screenId: string; x: number; y: number; z: number; rotY: number; tilt: number; w: number; h: number; color: string }
+export interface Cab3D { id: string; screenId: string; x: number; y: number; z: number; rotY: number; rotX?: number; tilt: number; w: number; h: number; color: string }
 
 export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
   const out: Cab3D[] = [];
