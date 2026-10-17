@@ -32,7 +32,7 @@ export default function Scene3D({ selected, dark }: { selected?: string; dark: b
       <directionalLight position={[5, 10, 8]} intensity={1.1} />
       <Grid position={[bounds.cx, 0, bounds.cz]} args={[200, 200]} cellSize={0.5} sectionSize={1} cellColor={dark ? "#24384d" : "#c9d5e1"} sectionColor={dark ? "#36577a" : "#9fb3c8"} fadeDistance={d * 4} infiniteGrid />
       {cabs.map((c) => (
-        <group key={c.id} position={[c.x, c.y, c.z]} rotation={[0, c.rotY, c.tilt ? -c.tilt : 0]}>
+        <group key={c.id} position={[c.x, c.y, c.z]} rotation={[c.rotX ?? 0, c.rotY, c.tilt ? -c.tilt : 0]}>
           <mesh>
             <boxGeometry args={[c.w * 0.985, c.h * 0.985, 0.08]} />
             <meshStandardMaterial color={c.color} roughness={0.55} metalness={0.1} emissive={c.color} emissiveIntensity={c.screenId === selected ? 0.35 : 0.12} />
