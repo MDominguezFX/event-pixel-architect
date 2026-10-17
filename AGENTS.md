@@ -21,5 +21,5 @@
 - Free-angle rotation is schematic: Cabinet.angleDeg and Slice.rotation (degrees, about the box center) never change native pixels; 90° cabinet turns still use the rotated flag so resolution swaps stay exact.
 - The 3D view is derived by the pure scene3d module from the same Project (curves wrap the developed view on the radius from geometry.ts) and is lazy-loaded client-only — three.js never runs during SSR.
 - The 2D scene uses scene2d orthographic projections of scene3d cabinet boxes, with a separate developed view for layout editing — cabinet shapes and curvature stay consistent without changing technical pixel plans.
-- Screen.mount ("pared"|"techo") solo afecta la vista 3D: scene3d rota los gabinetes a horizontal (rotX=-90°) y los eleva de forma esquemática; no cambia píxeles ni planos.
+- Screen.mount + Screen.mountTiltDeg (0–90°, 0=pared, 90=techo) solo afectan las vistas 3D y espacial: scene3d inclina TODA la pantalla alrededor de su borde inferior (rotX=-tilt) y la eleva de forma esquemática; scene2d aplica el mismo rotX en la proyección para que el plano espacial coincida con el 3D; no cambia píxeles ni planos técnicos.
 - Screen.manualRuns (ids de gabinetes por puerto, en orden) hace que cableRuns respete el cableado dibujado por el usuario: valida 650.000 px como error y continuidad por arista como aviso.
