@@ -148,6 +148,6 @@ describe("montaje en techo", () => {
     const p = newProject(P); const s = newScreen(P, "T", 4, 2); s.mount = "techo"; p.screens = [s];
     const c = scene3d(p, lk);
     expect(c.every((k) => k.rotX === -Math.PI / 2)).toBe(true);
-    expect(Math.min(...c.map((k) => k.y))).toBeGreaterThan(1); // flota sobre el suelo
+    expect(Math.min(...c.map((k) => k.y))).toBeGreaterThanOrEqual(1); // flota sobre el suelo
   });
 });

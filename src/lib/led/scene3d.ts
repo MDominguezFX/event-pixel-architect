@@ -24,8 +24,11 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
     const theta = curve ? (curve.apertureDeg * Math.PI) / 180 : 0;
     const R = theta > 1e-6 ? L / theta : 0;
     const sign = s.geometry.type === "convexa" ? -1 : 1;
-    const techo = s.mount === "techo";
-    if (techo) lift.set(s.id, H / 1000 + 0.5); // flota a una altura esquemática sobre el suelo
+    // Inclinación de montaje de TODA la pantalla: 0° = vertical (pared), 90° = horizontal (techo).
+    // "techo" equivale a 90°; mountTiltDeg permite graduaciones parciales. Gira alrededor del borde inferior.
+    const tiltDeg = s.mountTiltDeg ?? (s.mount === "techo" ? 90 : 0);
+    const tilt = Math.max(0, Math.min(90, tiltDeg)) * Math.PI / 180;
+    if (tilt > 1e-6) lift.set(s.id, H / 1000 + 0.5); // flota a una altura esquemática sobre el suelo
     s.cabinets.forEach((c, i) => {
       const d = dims[i]; if (!d) return;
       const cy = -(s.y + c.y + d.h / 2);
@@ -37,9 +40,13 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
         z = sign * R * (1 - Math.cos(a));
         rotY = -sign * a;
       }
-      out.push({ id: c.id, screenId: s.id, x: x / 1000, y: cy / 1000, z: z / 1000, rotY, rotX: techo ? -Math.PI / 2 : 0, tilt: ((c.angleDeg ?? 0) * Math.PI) / 180, w: d.w / 1000, h: d.h / 1000, color });
+      // giro de montaje: la altura sobre la base (yb) pasa a profundidad (z) según el ángulo
+      const yb = cy + H / 2; // 0 en la base, H en el tope (mm)
+      const my = -H / 2 + yb * Math.cos(tilt);
+      const mz = z + yb * Math.sin(tilt);
+      out.push({ id: c.id, screenId: s.id, x: x / 1000, y: my / 1000, z: mz / 1000, rotY, rotX: -tilt, tilt: ((c.angleDeg ?? 0) * Math.PI) / 180, w: d.w / 1000, h: d.h / 1000, color });
     });
   });
-  const floor = Math.min(...out.map((c) => c.y - c.h / 2));
-  return out.map((c) => ({ ...c, y: c.y - floor + (lift.get(c.screenId) ?? 0) })); // la base más baja apoya en el suelo (y = 0)
+  const floor = Math.min(...out.filter((c) => !lift.has(c.screenId)).map((c) => c.y - c.h / 2));
+  return out.map((c) => ({ ...c, y: c.y - (lift.has(c.screenId) ? 0 : floor) + (lift.get(c.screenId) ?? 0) })); // la base más baja apoya en el suelo (y = 0); las inclinadas flotan
 }
