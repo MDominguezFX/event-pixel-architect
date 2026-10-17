@@ -59,13 +59,40 @@ function group(screen: Screen, lookup: PanelLookup, route: CableRoute) {
  * Cableado siempre en serpentina con gabinetes completos y ≤ 650.000 px por cable.
  * Siempre horizontal (por filas); optimiza probando las 4 esquinas: menos puertos primero, luego carga más pareja;
  * ante empate se respeta la esquina configurada.
+ * Si la pantalla tiene manualRuns (cableado dibujado por el usuario), se respetan tal cual:
+ * se valida el límite de píxeles (error) y la continuidad por arista (aviso).
  */
 export function cableRuns(original: Screen, lookup: PanelLookup) {
+  if (original.manualRuns?.length) {
+    const byId = new Map(original.cabinets.map((c) => [c.id, c]));
+    const used = new Set<string>();
+    const runs: CableRun[] = [];
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    original.manualRuns.forEach((ids, i) => {
+      const cabs = ids.map((id) => byId.get(id)).filter((c): c is Cabinet => !!c);
+      if (!cabs.length) return;
+      let pixels = 0;
+      cabs.forEach((c, j) => {
+        const p = lookup(c.panelId);
+        if (!p) { errors.push(`Gabinete ${c.id}: panel desconocido.`); return; }
+        const d = cabDims(c, p);
+        pixels += d.rx * d.ry;
+        if (j > 0 && !cableNeighbors(cabs[j - 1]!, c, lookup)) warnings.push(`Puerto ${i + 1}: salto sin arista compartida entre los gabinetes ${j} y ${j + 1}.`);
+        used.add(c.id);
+      });
+      if (pixels > MAX_PIXELS_PER_CABLE) errors.push(`Puerto ${i + 1}: ${pixels.toLocaleString("es-AR")} px supera el máximo de 650.000.`);
+      runs.push({ port: runs.length + 1, pixels, cabinets: cabs });
+    });
+    const unassigned = original.cabinets.filter((c) => !used.has(c.id)).length;
+    if (unassigned) warnings.push(`${unassigned} gabinete(s) sin cable asignado.`);
+    return { runs, errors, warnings, manual: true, route: { start: original.numbering.start, axis: "filas" as const } };
+  }
   // Route in the screen's own frame so cables stay horizontal and turn with a rotated screen.
   const screen = screenFrame(original, lookup).local;
   const back = new Map(original.cabinets.map((c) => [c.id, c]));
   const res = cableRunsLocal(screen, lookup);
-  return { ...res, runs: res.runs.map((r) => ({ ...r, cabinets: r.cabinets.map((c) => back.get(c.id) ?? c) })) };
+  return { ...res, warnings: [] as string[], manual: false, runs: res.runs.map((r) => ({ ...r, cabinets: r.cabinets.map((c) => back.get(c.id) ?? c) })) };
 }
 
 function cableRunsLocal(screen: Screen, lookup: PanelLookup) {
