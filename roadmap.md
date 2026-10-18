@@ -1,4 +1,5 @@
 # Roadmap MANSSO PIXEL — LED Planner
+- [x] Agregar vista lateral con arrastre en profundidad y altura, coherente con 3D
 - [x] Renombrar a MANSSO PIXEL y usar logo oficial
 - [x] Catálogo + panel custom
 - [x] Motor de cálculo, mezcla, curvas

@@ -87,8 +87,9 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     const d = drag.current; if (!d) return;
     const q = pointer(e);
     const next = moveSceneScreen(d.screen, (q.x - d.sx) / view.k, (q.y - d.sy) / view.k, projection, movePlane, lookup);
-    next.x = sn(next.x);
+    if (projection !== "lateral") next.x = sn(next.x);
     if (projection === "desarrollada") { next.developedX = sn(next.developedX ?? 0); next.developedY = sn(next.developedY ?? 0); }
+    else if (projection === "lateral") { next.z = sn(next.z ?? 0); next.mountHeightM = sn((next.mountHeightM ?? 0) * 1000) / 1000; }
     else if (movePlane === "suelo" && projection === "espacial") next.z = sn(next.z ?? 0);
     else next.mountHeightM = sn((next.mountHeightM ?? 0) * 1000) / 1000;
     d.next = next;
@@ -160,8 +161,8 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
       </div>}>
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <div className="flex flex-wrap gap-1" role="group" aria-label="Vista del plano 2D">
-          {([['espacial', 'Espacial'], ['frontal', 'Frontal'], ['desarrollada', 'Desarrollada']] as const).map(([id, label]) =>
-            <Btn key={id} variant={projection === id ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setProjection(id)}>{label}</Btn>)}
+          {([['espacial', 'Espacial'], ['frontal', 'Frontal'], ['lateral', 'Lateral'], ['desarrollada', 'Desarrollada']] as const).map(([id, label]) =>
+            <Btn key={id} aria-pressed={projection === id} variant={projection === id ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setProjection(id)}>{label}</Btn>)}
         </div>
         {projection === "espacial" && <div className="flex gap-1" role="group" aria-label="Plano de movimiento">
           <Btn variant={movePlane === "vertical" ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setMovePlane("vertical")} title="Mover horizontalmente y ajustar altura">Horizontal / altura</Btn>
@@ -181,6 +182,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
           {gxs.map((x) => <line key={"x" + x} x1={x} y1={view.y} x2={x} y2={view.y + vh / view.k} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
           {gys.map((y) => <line key={"y" + y} x1={view.x} y1={y} x2={view.x + vw / view.k} y2={y} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
           <path d={`M${-fs * 2} 0H${fs * 2}M0 ${-fs * 2}V${fs * 2}`} stroke="currentColor" className="text-muted-foreground" strokeWidth={2 / view.k} />
+          {projection === "lateral" && <line x1={view.x} y1={0} x2={view.x + vw / view.k} y2={0} stroke="currentColor" className="text-muted-foreground" strokeWidth={1.5 / view.k} />}
           {p.screens.map((s, i) => {
             const t = screenStats(s, lookup);
             const cabinets = scene.filter((c) => c.screenId === s.id);
@@ -199,6 +201,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
           })}
         </g>
       </svg>
+      {projection === "lateral" && <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>↑ Altura · m</span><span>Profundidad · m →</span></div>}
       <div className="mt-3 flex flex-wrap gap-1.5">
         <select className={inputCls + " w-auto"} value="" onChange={(e) => e.target.value && addScreen(e.target.value as ScreenKind)}>
           <option value="">+ Agregar pantalla…</option>{KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}

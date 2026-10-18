@@ -11,6 +11,35 @@ if (!panel) throw new Error("Missing panel fixture");
 const lookup = (id: string) => BUILTIN_PANELS.find((p) => p.id === id);
 
 describe("same cabinets in 2D and 3D", () => {
+  it.each([0, 45, 90, -90])("lateral view projects depth and height at %s° and drags only the selected screen", (angle) => {
+    const p = newProject(panel);
+    const s = newScreen(panel, "Lateral", 4, 2);
+    s.x = 1234; s.z = 800; s.mountHeightM = 4.35; s.mountTiltDeg = angle; s.mountYawDeg = 30;
+    p.screens.push(s);
+    const before = scene2d(p, lookup, "lateral");
+    for (const box of scene3d(p, lookup)) {
+      const item = before.find((v) => v.id === box.id);
+      if (!item) throw new Error("Missing lateral cabinet");
+      const points = item.faces.flat();
+      expect(points.reduce((sum, q) => sum + q.x, 0) / points.length).toBeCloseTo(box.z * 1000);
+      expect(points.reduce((sum, q) => sum + q.y, 0) / points.length).toBeCloseTo(-box.y * 1000);
+    }
+    const moved = moveSceneScreen(s, 300, -200, "lateral", "suelo", lookup);
+    expect(moved.x).toBe(1234);
+    expect(moved.z).toBe(1100);
+    expect(moved.mountHeightM).toBeCloseTo(4.55);
+    expect(moved.cabinets).toEqual(s.cabinets);
+    p.screens[1] = moved;
+    const after = scene2d(p, lookup, "lateral");
+    for (const item of before) {
+      const next = after.find((c) => c.id === item.id);
+      if (!next) throw new Error("Missing moved lateral cabinet");
+      item.faces.forEach((face, i) => face.forEach((q, j) => {
+        expect((next.faces[i]?.[j]?.x ?? NaN) - q.x).toBeCloseTo(item.screenId === s.id ? 300 : 0);
+        expect((next.faces[i]?.[j]?.y ?? NaN) - q.y).toBeCloseTo(item.screenId === s.id ? -200 : 0);
+      }));
+    }
+  });
   it.each(["plana", "arco", "cilindro"] as const)("projects every cabinet of %s from the 3D boxes", (type) => {
     const p = newProject(panel), s = newScreen(panel, "Pantalla", 12, 2);
     s.geometry = { ...s.geometry, type, mode: "continua", input: "apertura", apertureDeg: 180 };
