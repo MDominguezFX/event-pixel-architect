@@ -3,29 +3,34 @@ import { cabDims } from "./engine";
 import type { Project, Screen } from "./model";
 import { scene3d, sceneHeight } from "./scene3d";
 
-export type SceneView = "espacial" | "frontal" | "desarrollada";
+export type SceneView = "espacial" | "frontal" | "lateral" | "desarrollada";
 export interface ScenePoint { x: number; y: number }
 export interface Panel2D { id: string; screenId: string; faces: ScenePoint[][]; depth: number }
 
 // Orthographic projection of the very same cabinet boxes used by Scene3D.
 const COS = Math.sqrt(3) / 2;
 function project(x: number, y: number, z: number, view: SceneView): ScenePoint {
+  if (view === "lateral") return { x: z, y: -y };
   return view === "espacial" ? { x: COS * x - z / 2, y: -COS * y + x / 4 + COS * z / 2 } : { x, y: -y };
 }
 
 export function sceneDrag(dx: number, dy: number, view: SceneView): ScenePoint {
+  // In lateral view the horizontal coordinate represents depth, not world X.
+  if (view === "lateral") return { x: dx, y: dy };
   if (view !== "espacial") return { x: dx, y: dy };
   const x = dx / COS;
   return { x, y: (dy - x / 4) / COS };
 }
 
 export function sceneOffset(dx: number, dy: number, view: SceneView): ScenePoint {
+  if (view === "lateral") return { x: dx, y: dy };
   return project(dx, -dy, 0, view);
 }
 
 export type MovePlane = "vertical" | "suelo";
 export function moveSceneScreen(s: Screen, dx: number, dy: number, view: SceneView, plane: MovePlane, lookup: PanelLookup): Screen {
   if (view === "desarrollada") return { ...s, developedX: (s.developedX ?? 0) + dx, developedY: (s.developedY ?? 0) + dy };
+  if (view === "lateral") return { ...s, z: (s.z ?? 0) + dx, mountHeightM: sceneHeight(s, lookup) - dy / 1000 };
   if (plane === "suelo" && view === "espacial") {
     return { ...s, x: s.x + COS * dx + dy, z: (s.z ?? 0) - dx / 2 + Math.sqrt(3) * dy };
   }
@@ -76,7 +81,7 @@ export function scene2d(p: Project, lookup: PanelLookup, view: SceneView): Panel
     const faces = [[0,1,2,3],[0,4,5,1],[1,5,6,2],[2,6,7,3],[3,7,4,0],[4,7,6,5]].map((ids) => ids.flatMap((i) => {
       const point = vertices[i]; return point ? [point] : [];
     }));
-    return { id: c.id, screenId: c.screenId, faces, depth: c.x / 2 + c.z * COS };
+    return { id: c.id, screenId: c.screenId, faces, depth: view === "lateral" ? -c.x : c.x / 2 + c.z * COS };
   }).sort((a, b) => a.depth - b.depth);
 }
 
