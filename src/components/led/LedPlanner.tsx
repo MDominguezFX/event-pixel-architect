@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Moon, Sun, FileDown, FileJson, FolderOpen, FilePlus2, CopyPlus, Instagram, Globe } from "lucide-react";
-import manssoLogo from "@/assets/mansso-logo.png.asset.json";
-import startLogo from "@/assets/start-solution-logo.png.asset.json";
+import { manssoLogo, startLogo } from "@/assets/footer-logos";
 import { BUILTIN_PANELS, type Panel } from "@/lib/led/catalog";
 import { exportJson, download } from "@/lib/led/exporters";
 import { ExportDialog } from "./ExportDialog";
@@ -186,9 +185,9 @@ export function LedPlanner() {
             <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer" className="font-bold text-secondary-foreground underline-offset-2 hover:underline">Start Solution</a>
           </p>
           <div className="flex max-w-full items-center justify-center gap-6 rounded-md bg-brand-surface px-5 py-3 sm:gap-8">
-            <img src={manssoLogo.url} alt="MANSSO TIP" className="h-auto max-h-11 w-28 object-contain sm:w-32" />
+            <img src={manssoLogo} alt="MANSSO TIP" className="h-auto max-h-11 w-28 object-contain sm:w-32" />
             <span className="h-8 w-px shrink-0 bg-brand-divider" aria-hidden="true" />
-            <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer"><img src={startLogo.url} alt="Start Solution" className="h-auto max-h-11 w-28 object-contain sm:w-32" /></a>
+            <a href="https://startsolution.com.ar/" target="_blank" rel="noopener noreferrer"><img src={startLogo} alt="Start Solution" className="h-auto max-h-11 w-28 object-contain sm:w-32" /></a>
           </div>
           <nav className="flex flex-wrap justify-center gap-2 text-sm" aria-label="Redes">
             <a href="https://www.instagram.com/manssotip/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 px-2 text-muted-foreground hover:text-primary"><Instagram size={16} />@manssotip</a>
