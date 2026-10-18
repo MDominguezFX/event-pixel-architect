@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_PANELS } from "@/lib/led/catalog";
 import { newProject, newScreen } from "@/lib/led/model";
-import { scene2d, sceneBounds, sceneDrag, sceneOffset } from "@/lib/led/scene2d";
+import { scene2d, sceneBounds, sceneDrag, sceneOffset, moveSceneScreen } from "@/lib/led/scene2d";
 import { scene3d } from "@/lib/led/scene3d";
 import { cableNeighbors, cablePath, cableRuns } from "@/lib/led/cabling";
 import { wiringPlan } from "@/lib/led/plan";
@@ -30,6 +30,37 @@ describe("same cabinets in 2D and 3D", () => {
     const move = sceneOffset(500, 200, "espacial");
     const original = sceneDrag(move.x, move.y, "espacial");
     expect(original.x).toBeCloseTo(500); expect(original.y).toBeCloseTo(200);
+  });
+  it.each([0, 45, 90])("moves the whole screen at %s° by the exact projected drag without moving other screens", (angle) => {
+    const p = newProject(panel);
+    const s = newScreen(panel, "Movible", 4, 2);
+    s.mountTiltDeg = angle; s.mountHeightM = 4.35;
+    p.screens.push(s);
+    const before = scene2d(p, lookup, "espacial");
+    p.screens[1] = moveSceneScreen(s, 300, -200, "espacial", "vertical", lookup);
+    const after = scene2d(p, lookup, "espacial");
+    for (const item of before) {
+      const next = after.find((c) => c.id === item.id);
+      if (!next) throw new Error("Missing cabinet");
+      item.faces.forEach((face, i) => face.forEach((q, j) => {
+        const actual = next.faces[i]?.[j];
+        expect((actual?.x ?? NaN) - q.x).toBeCloseTo(item.screenId === s.id ? 300 : 0);
+        expect((actual?.y ?? NaN) - q.y).toBeCloseTo(item.screenId === s.id ? -200 : 0);
+      }));
+    }
+  });
+  it("moves ceiling screens in depth without changing their chosen height or native layout", () => {
+    const s = newScreen(panel, "Techo", 4, 2); s.mount = "techo"; s.mountHeightM = 4.35;
+    const moved = moveSceneScreen(s, 300, 200, "espacial", "suelo", lookup);
+    expect(moved.mountHeightM).toBe(4.35);
+    expect(moved.z).toBeCloseTo(-150 + Math.sqrt(3) * 200);
+    expect(moved.cabinets).toEqual(s.cabinets);
+    const p = newProject(panel); p.screens = [s];
+    const before = scene2d(p, lookup, "espacial"); p.screens = [moved];
+    const after = scene2d(p, lookup, "espacial");
+    expect((after[0]?.faces[0]?.[0]?.x ?? NaN) - (before[0]?.faces[0]?.[0]?.x ?? NaN)).toBeCloseTo(300);
+    expect((after[0]?.faces[0]?.[0]?.y ?? NaN) - (before[0]?.faces[0]?.[0]?.y ?? NaN)).toBeCloseTo(200);
+    expect(scene3d(p, lookup).every((c) => Math.abs(c.y - 4.35) < 1e-6)).toBe(true);
   });
 });
 

@@ -5,7 +5,8 @@ import { Copy, Redo2, Trash2, Undo2, ZoomIn, ZoomOut, Plus } from "lucide-react"
 import { screenStats, fmtM } from "@/lib/led/engine";
 import { newScreen, uid, type Screen, type ScreenKind } from "@/lib/led/model";
 import { allPanels, redo, undo, update, useStore } from "@/lib/led/store";
-import { scene2d, sceneBounds, sceneDrag, sceneOffset, type SceneView } from "@/lib/led/scene2d";
+import { scene2d, sceneBounds, moveSceneScreen, type MovePlane, type SceneView } from "@/lib/led/scene2d";
+import { sceneHeight } from "@/lib/led/scene3d";
 import { Btn, Card, Field, inputCls, Num } from "./ui";
 
 const KINDS: { id: ScreenKind; label: string }[] = [
@@ -20,16 +21,17 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
   const lookup = (id: string) => panels.find((p) => p.id === id);
   const p = st.project;
   const [view, setView] = useState({ x: -1000, y: -1000, k: 0.06 });
-  const [snap, setSnap] = useState(100);
+  const [snap, setSnap] = useState(0);
   const [showGrid, setShowGrid] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showDims, setShowDims] = useState(true);
   const [projection, setProjection] = useState<SceneView>("espacial");
-  const scene = scene2d(p, lookup, projection);
-  const drag = useRef<{ id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const [movePlane, setMovePlane] = useState<MovePlane>("vertical");
+  const [live, setLive] = useState<Screen | null>(null);
+  const scene = scene2d(live ? { ...p, screens: p.screens.map((s) => s.id === live.id ? live : s) } : p, lookup, projection);
+  const drag = useRef<{ screen: Screen; sx: number; sy: number; next?: Screen } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
-  const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
   const sel = p.screens.find((s) => s.id === selected);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
   }, []);
 
   const mod = (id: string, fn: (s: Screen) => void) => update((pr) => { const screen = pr.screens.find((x) => x.id === id); if (screen) fn(screen); return pr; });
-  const sn = (v: number) => (snap > 0 ? Math.round(v / snap) * snap : Math.round(v));
+  const sn = (v: number) => (snap > 0 ? Math.round(v / snap) * snap : v);
   const vw = 1000, vh = 560;
 
   useEffect(() => {
@@ -59,25 +61,34 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     return () => { select(svg).on(".zoom", null); zoomRef.current = null; };
   }, []);
 
+  const pointer = (e: React.PointerEvent) => {
+    const matrix = svgRef.current?.getScreenCTM();
+    if (!matrix) return { x: 0, y: 0 };
+    return new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
+  };
   const onDown = (e: React.PointerEvent, id?: string) => {
-    if (!id) return;
+    if (!id || e.button !== 0) return;
     e.stopPropagation(); (e.target as Element).setPointerCapture?.(e.pointerId);
     const s = p.screens.find((x) => x.id === id);
     if (!s) return;
-    drag.current = { id, sx: e.clientX, sy: e.clientY, ox: s ? s.x : view.x, oy: s ? s.y : view.y, moved: false };
+    const q = pointer(e);
+    drag.current = { screen: structuredClone(s), sx: q.x, sy: q.y };
     if (id) onSelect(id);
   };
-  const scale = () => { const r = svgRef.current?.getBoundingClientRect(); return r?.width ? vw / r.width / view.k : 0; };
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current; if (!d) return;
-    const { x: dx, y: dy } = sceneDrag((e.clientX - d.sx) * scale(), (e.clientY - d.sy) * scale(), projection);
-    d.moved = true;
-    if (d.id) setLive({ id: d.id, x: sn(d.ox + dx), y: sn(d.oy + dy) });
-    else setView((v) => ({ ...v, x: d.ox - dx, y: d.oy - dy }));
+    const q = pointer(e);
+    const next = moveSceneScreen(d.screen, (q.x - d.sx) / view.k, (q.y - d.sy) / view.k, projection, movePlane, lookup);
+    next.x = sn(next.x);
+    if (projection === "desarrollada") next.y = sn(next.y);
+    else if (movePlane === "suelo" && projection === "espacial") next.z = sn(next.z ?? 0);
+    else next.mountHeightM = sn((next.mountHeightM ?? 0) * 1000) / 1000;
+    d.next = next;
+    setLive(next);
   };
   const onUp = () => {
     const d = drag.current; drag.current = null;
-    if (d?.id && live) { const L = live; mod(d.id, (s) => { s.x = L.x; s.y = L.y; }); }
+    if (d?.next) { const next = d.next; mod(d.screen.id, (s) => { s.x = next.x; s.y = next.y; s.z = next.z; s.mountHeightM = next.mountHeightM; }); }
     setLive(null);
   };
   const zoom = (f: number) => {
@@ -144,6 +155,10 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
           {([['espacial', 'Espacial'], ['frontal', 'Frontal'], ['desarrollada', 'Desarrollada']] as const).map(([id, label]) =>
             <Btn key={id} variant={projection === id ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setProjection(id)}>{label}</Btn>)}
         </div>
+        {projection === "espacial" && <div className="flex gap-1" role="group" aria-label="Plano de movimiento">
+          <Btn variant={movePlane === "vertical" ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setMovePlane("vertical")} title="Mover horizontalmente y ajustar altura">Horizontal / altura</Btn>
+          <Btn variant={movePlane === "suelo" ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setMovePlane("suelo")} title="Mover horizontalmente y en profundidad manteniendo la altura">Horizontal / profundidad</Btn>
+        </div>}
         <label className="flex items-center gap-1">Grilla
           <select className="rounded border border-input bg-background px-1" value={snap} onChange={(e) => setSnap(Number(e.target.value))}>
             <option value={0}>sin ajuste</option><option value={10}>10 mm</option><option value={100}>100 mm</option><option value={250}>250 mm</option><option value={500}>500 mm</option>
@@ -153,19 +168,17 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
         <label className="flex items-center gap-1"><input type="checkbox" checked={showDims} onChange={(e) => setShowDims(e.target.checked)} />Cotas</label>
       </div>
       <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} aria-label="Editor de escena 2D" className="aspect-[1000/560] w-full touch-none rounded-md border border-border bg-muted cursor-grab active:cursor-grabbing"
-        onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+        onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null; setLive(null); }}>
         <g transform={`scale(${view.k}) translate(${-view.x} ${-view.y})`}>
           {gxs.map((x) => <line key={"x" + x} x1={x} y1={view.y} x2={x} y2={view.y + vh / view.k} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
           {gys.map((y) => <line key={"y" + y} x1={view.x} y1={y} x2={view.x + vw / view.k} y2={y} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
           <path d={`M${-fs * 2} 0H${fs * 2}M0 ${-fs * 2}V${fs * 2}`} stroke="currentColor" className="text-muted-foreground" strokeWidth={2 / view.k} />
           {p.screens.map((s, i) => {
             const t = screenStats(s, lookup);
-            const pos = live?.id === s.id ? live : s;
             const cabinets = scene.filter((c) => c.screenId === s.id);
             const bounds = sceneBounds(cabinets);
-            const offset = sceneOffset(pos.x - s.x, pos.y - s.y, projection);
             return (
-              <g key={s.id} data-screen={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move" transform={`translate(${offset.x} ${offset.y})`}>
+              <g key={s.id} data-screen={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
                 {cabinets.map((c) => <g key={c.id} data-cabinet={c.id}>
                   {c.faces.map((face, j) => <polygon key={j} points={face.map((q) => `${q.x},${q.y}`).join(' ')}
                     className={`${SCREEN_FILLS[i % SCREEN_FILLS.length]} ${s.id === selected ? "stroke-accent" : "stroke-foreground"}`}
@@ -187,11 +200,13 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
         <Btn variant="outline" onClick={() => align("distH")} disabled={p.screens.length < 3}>Distribuir H</Btn>
       </div>
       {sel && (
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted p-2 sm:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_auto]">
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted p-2 sm:grid-cols-3 xl:grid-cols-6" role="group" aria-label="Posición de pantalla">
           <Field label="Nombre" className="col-span-2 sm:col-span-1"><input className={inputCls} value={sel.name} onChange={(e) => mod(sel.id, (s) => { s.name = e.target.value; })} /></Field>
           <Field label="Tipo"><select className={inputCls} value={sel.kind} onChange={(e) => mod(sel.id, (s) => { s.kind = e.target.value as ScreenKind; })}>{KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</select></Field>
           <Field label="X mm"><Num value={sel.x} onChange={(v) => mod(sel.id, (s) => { s.x = Math.round(v ?? 0); })} /></Field>
           <Field label="Y mm"><Num value={sel.y} onChange={(v) => mod(sel.id, (s) => { s.y = Math.round(v ?? 0); })} /></Field>
+           <Field label="Altura m"><Num value={sceneHeight(sel, lookup)} step={0.1} onChange={(v) => mod(sel.id, (s) => { s.mountHeightM = v ?? 0; })} /></Field>
+           <Field label="Profundidad m"><Num value={(sel.z ?? 0) / 1000} step={0.1} onChange={(v) => mod(sel.id, (s) => { s.z = (v ?? 0) * 1000; })} /></Field>
           <div className="col-span-2 flex items-end gap-1 sm:col-span-1">
             <Btn variant="outline" title="Duplicar" onClick={() => { const c = structuredClone(sel); c.id = uid(); c.name += " (copia)"; c.x += 1000; c.cabinets.forEach((k) => (k.id = uid())); update((pr) => { pr.screens.push(c); return pr; }); onSelect(c.id); }}><Plus size={14} /><Copy size={14} /></Btn>
             <Btn variant="danger" title="Eliminar" disabled={p.screens.length < 2} onClick={() => { const next = p.screens.find((x) => x.id !== sel.id); if (!next) return; update((pr) => { pr.screens = pr.screens.filter((x) => x.id !== sel.id); return pr; }); onSelect(next.id); }}><Trash2 size={14} /></Btn>
