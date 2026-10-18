@@ -18,7 +18,7 @@ export function Num({ value, onChange, min, step, className }: { value: number |
   );
 }
 
-export function Btn({ children, onClick, variant = "default", className, disabled, title }: { children: ReactNode; onClick?: () => void; variant?: "default" | "outline" | "ghost" | "danger"; className?: string; disabled?: boolean; title?: string }) {
+export function Btn({ children, onClick, variant = "default", className, disabled, title, "aria-pressed": pressed }: { children: ReactNode; onClick?: () => void; variant?: "default" | "outline" | "ghost" | "danger"; className?: string; disabled?: boolean; title?: string; "aria-pressed"?: boolean }) {
   const v = {
     default: "bg-primary text-primary-foreground hover:opacity-90",
     outline: "border border-border bg-card text-foreground hover:bg-muted",
@@ -26,7 +26,7 @@ export function Btn({ children, onClick, variant = "default", className, disable
     danger: "bg-destructive text-destructive-foreground hover:opacity-90",
   }[variant];
   return (
-    <button type="button" title={title} disabled={disabled} onClick={onClick}
+    <button type="button" title={title} disabled={disabled} onClick={onClick} aria-pressed={pressed}
       className={cn("inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-semibold transition disabled:opacity-40", v, className)}>
       {children}
     </button>
