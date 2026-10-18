@@ -11,6 +11,8 @@ import { cabDims } from "@/lib/led/engine";
 import { rotateFree, rotateGroup } from "@/lib/led/edit";
 import { PlanView } from "./PlanView";
 import { Btn, Card, Field, inputCls, Notice, Num, Stat } from "./ui";
+import { ScreenRotation } from "./ScreenRotation";
+import { sceneHeight } from "@/lib/led/scene3d";
 
 export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onNewPanel: () => void; dark: boolean }) {
   const st0 = useStore();
@@ -262,12 +264,7 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
                   <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size || !manualDeg} onClick={() => spin(manualDeg ?? 0)}>Aplicar</Btn></span>
                 <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size || !screen.cabinets.some((k) => pick.has(k.id) && k.angleDeg)} title="Quitar giro libre" onClick={() => mod((s) => { s.cabinets.forEach((k) => { if (pick.has(k.id)) delete k.angleDeg; }); })}>0°</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => rotatePick(new Set(screen.cabinets.map((k) => k.id)))}>↻ Girar pantalla completa</Btn>
-                <span className="flex items-center gap-1 rounded border border-input bg-background px-1.5" title="Inclinación de montaje de toda la pantalla: 0° = vertical (pared), 90° = horizontal (techo). Esquemático: no cambia píxeles ni valida rigging.">
-                  <span className="font-bold text-muted-foreground">Montaje</span>
-                  <Num className="h-7 w-16" value={screen.mountTiltDeg ?? (screen.mount === "techo" ? 90 : 0)} step={5} onChange={(v) => mod((s) => { const d = Math.max(0, Math.min(90, v ?? 0)); s.mountTiltDeg = d; s.mount = d >= 90 ? "techo" : "pared"; })} />°
-                  <Btn variant="ghost" className="h-7 px-1.5 text-xs" onClick={() => mod((s) => { s.mountTiltDeg = 0; s.mount = "pared"; })}>Pared</Btn>
-                  <Btn variant="ghost" className="h-7 px-1.5 text-xs" onClick={() => mod((s) => { s.mountTiltDeg = 90; s.mount = "techo"; })}>Techo</Btn>
-                </span>
+                <ScreenRotation screen={screen} onChange={(values) => mod((s) => { s.mountHeightM = sceneHeight(s, lookup); Object.assign(s, values); })} />
                 <span className="flex items-center gap-1 rounded border border-input bg-background px-1.5" title="Altura libre de la base de la pantalla sobre el suelo (solo vistas 3D/espacial). Sirve para que las pantallas de techo no choquen con las de pared.">
                   <span className="font-bold text-muted-foreground">Altura</span>
                   <Num className="h-7 w-16" value={screen.mountHeightM} step={0.1} onChange={(v) => mod((s) => { if (v == null) delete s.mountHeightM; else s.mountHeightM = Math.max(0, v); })} />m

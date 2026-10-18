@@ -6,7 +6,7 @@ import { computeCurve } from "./geometry";
 import type { Project, Screen } from "./model";
 import { screenColor } from "./plan";
 
-export interface Cab3D { id: string; screenId: string; x: number; y: number; z: number; rotY: number; rotX?: number; tilt: number; w: number; h: number; color: string }
+export interface Cab3D { id: string; screenId: string; x: number; y: number; z: number; rotY: number; rotX?: number; yaw?: number; tilt: number; w: number; h: number; color: string }
 
 export function sceneHeight(s: Screen, lookup: PanelLookup): number {
   if (s.mountHeightM != null) return s.mountHeightM;
@@ -14,7 +14,7 @@ export function sceneHeight(s: Screen, lookup: PanelLookup): number {
     const panel = lookup(c.panelId);
     return panel ? c.y + cabDims(c, panel).h : 0;
   }));
-  const inclined = (s.mountTiltDeg ?? (s.mount === "techo" ? 90 : 0)) > 0;
+  const inclined = Math.abs(s.mountTiltDeg ?? (s.mount === "techo" ? 90 : 0)) > 0;
   return (inclined ? h / 1000 + 0.5 : 0) - s.y / 1000;
 }
 
@@ -36,7 +36,8 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
     // Inclinación de montaje de TODA la pantalla: 0° = vertical (pared), 90° = horizontal (techo).
     // "techo" equivale a 90°; mountTiltDeg permite graduaciones parciales. Gira alrededor del borde inferior.
     const tiltDeg = s.mountTiltDeg ?? (s.mount === "techo" ? 90 : 0);
-    const tilt = Math.max(0, Math.min(90, tiltDeg)) * Math.PI / 180;
+    const tilt = tiltDeg * Math.PI / 180;
+    const yaw = (s.mountYawDeg ?? 0) * Math.PI / 180;
     const base = sceneHeight(s, lookup);
     s.cabinets.forEach((c, i) => {
       const d = dims[i]; if (!d) return;
@@ -52,7 +53,10 @@ export function scene3d(p: Project, lookup: PanelLookup): Cab3D[] {
       const yb = H - c.y - d.h / 2;
       const my = yb * Math.cos(tilt) - z * Math.sin(-tilt);
       const mz = z * Math.cos(tilt) + yb * Math.sin(-tilt);
-      out.push({ id: c.id, screenId: s.id, x: x / 1000, y: base + my / 1000, z: ((s.z ?? 0) + mz) / 1000, rotY, rotX: -tilt, tilt: ((c.angleDeg ?? 0) * Math.PI) / 180, w: d.w / 1000, h: d.h / 1000, color });
+      const relativeX = x - s.x - L / 2;
+      const worldX = s.x + L / 2 + relativeX * Math.cos(yaw) + mz * Math.sin(yaw);
+      const worldZ = (s.z ?? 0) - relativeX * Math.sin(yaw) + mz * Math.cos(yaw);
+      out.push({ id: c.id, screenId: s.id, x: worldX / 1000, y: base + my / 1000, z: worldZ / 1000, rotY, rotX: -tilt, yaw, tilt: ((c.angleDeg ?? 0) * Math.PI) / 180, w: d.w / 1000, h: d.h / 1000, color });
     });
   });
   return out;

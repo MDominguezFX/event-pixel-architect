@@ -16,3 +16,4 @@
 - [x] Mostrar en el editor 2D los mismos gabinetes y formas que en 3D
 - [x] Eliminar diagonales del recorrido de cableado
 - [x] Corregir ubicación libre de pantallas desde el editor de escena y verificar sincronización 3D
+- [ ] Corregir vista desarrollada y permitir giro completo arriba/abajo y adelante/atrás en 2D y 3D

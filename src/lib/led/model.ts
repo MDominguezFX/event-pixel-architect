@@ -41,7 +41,10 @@ export interface Screen {
   z?: number; // profundidad de escena en mm; independiente del plano desarrollado
   mixConfirmed: boolean; // usuario confirma compatibilidad mecánica de la mezcla
   mount?: "pared" | "techo"; // techo: la pantalla se dibuja horizontal en la vista 3D (esquemático)
-  mountTiltDeg?: number; // inclinación de montaje de toda la pantalla (0 = vertical/pared, 90 = techo horizontal); esquemático, no cambia píxeles
+  mountTiltDeg?: number; // giro X firmado de toda la pantalla (0 = pared, ±90 = techo); no cambia píxeles
+  mountYawDeg?: number; // giro Y firmado de toda la pantalla alrededor del centro de su borde inferior
+  developedX?: number; // posición independiente en el plano desarrollado (mm)
+  developedY?: number;
   mountHeightM?: number; // altura libre de montaje en metros (base de la pantalla sobre el suelo) para vistas 3D/espacial; esquemático
   manualRuns?: string[][]; // cableado manual: ids de gabinetes por puerto, en orden de conexión
 }

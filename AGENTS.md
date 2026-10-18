@@ -20,7 +20,7 @@
 - PDF export is section-driven (PdfOpts.sections + screenIds) chosen in an export dialog — avoids dumping every page by default.
 - Free-angle rotation is schematic: Cabinet.angleDeg and Slice.rotation (degrees, about the box center) never change native pixels; 90° cabinet turns still use the rotated flag so resolution swaps stay exact.
 - The 3D view is derived by the pure scene3d module from the same Project (curves wrap the developed view on the radius from geometry.ts) and is lazy-loaded client-only — three.js never runs during SSR.
-- The 2D scene uses scene2d orthographic projections of scene3d cabinet boxes, with a separate developed view for layout editing — cabinet shapes and curvature stay consistent without changing technical pixel plans.
+- The 2D scene projects scene3d boxes with whole-screen signed X tilt then Y yaw; Three renders the same nested transforms. Developed views use independent developedX/Y with side-by-side defaults — spatial rotations and placement never collapse the native unfolded layout.
 - Spatial positioning uses Screen.x, Screen.z (mm) and mountHeightM (base height in metres) for every mount; legacy y supplies a default height only. Scene editing projects vertical or ground-plane drags through moveSceneScreen, with no shared floor renormalization — each screen moves independently, and scene2d applies the same Z/Y/X rotations as Three.js.
 - The 3D camera translates with the scene centre and scales its existing offset with scene extent when placement changes — preserves orbit/zoom while keeping freely positioned screens visible.
 - Screen.manualRuns (ids de gabinetes por puerto, en orden) hace que cableRuns respete el cableado dibujado por el usuario: valida 650.000 px como error y continuidad por arista como aviso.
