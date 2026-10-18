@@ -1,7 +1,7 @@
 import type { PanelLookup } from "./engine";
 import { cabDims } from "./engine";
-import type { Project } from "./model";
-import { scene3d } from "./scene3d";
+import type { Project, Screen } from "./model";
+import { scene3d, sceneHeight } from "./scene3d";
 
 export type SceneView = "espacial" | "frontal" | "desarrollada";
 export interface ScenePoint { x: number; y: number }
@@ -23,6 +23,17 @@ export function sceneOffset(dx: number, dy: number, view: SceneView): ScenePoint
   return project(dx, -dy, 0, view);
 }
 
+export type MovePlane = "vertical" | "suelo";
+export function moveSceneScreen(s: Screen, dx: number, dy: number, view: SceneView, plane: MovePlane, lookup: PanelLookup): Screen {
+  if (view === "desarrollada") return { ...s, x: s.x + dx, y: s.y + dy };
+  if (plane === "suelo" && view === "espacial") {
+    return { ...s, x: s.x + COS * dx + dy, z: (s.z ?? 0) - dx / 2 + Math.sqrt(3) * dy };
+  }
+  const x = view === "espacial" ? dx / COS : dx;
+  const height = view === "espacial" ? (x / 4 - dy) / COS : -dy;
+  return { ...s, x: s.x + x, mountHeightM: sceneHeight(s, lookup) + height / 1000 };
+}
+
 export function scene2d(p: Project, lookup: PanelLookup, view: SceneView): Panel2D[] {
   if (view === "desarrollada") return p.screens.flatMap((s) => s.cabinets.flatMap((c) => {
     const panel = lookup(c.panelId);
@@ -39,16 +50,18 @@ export function scene2d(p: Project, lookup: PanelLookup, view: SceneView): Panel
     const vertices = ([[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]] as const).map(([a,b,d]) => {
       const x = a * c.w * 0.985 / 2, y = b * c.h * 0.985 / 2, z = d * 0.08 / 2;
       const rx = x * Math.cos(c.tilt) + y * Math.sin(c.tilt);
-      let ry = -x * Math.sin(c.tilt) + y * Math.cos(c.tilt);
-      let rz = z;
+      const zy = -x * Math.sin(c.tilt) + y * Math.cos(c.tilt);
+      const yx = rx * Math.cos(c.rotY) + z * Math.sin(c.rotY);
+      let ry = zy;
+      let rz = -rx * Math.sin(c.rotY) + z * Math.cos(c.rotY);
       const rotX = c.rotX ?? 0; // inclinación de montaje (techo): mismo giro que en la vista 3D
       if (rotX) {
         const ny = ry * Math.cos(rotX) - rz * Math.sin(rotX);
         rz = ry * Math.sin(rotX) + rz * Math.cos(rotX);
         ry = ny;
       }
-      return project((c.x + rx * Math.cos(c.rotY) + rz * Math.sin(c.rotY)) * 1000,
-        (c.y + ry) * 1000, (c.z - rx * Math.sin(c.rotY) + rz * Math.cos(c.rotY)) * 1000, view);
+      return project((c.x + yx) * 1000,
+        (c.y + ry) * 1000, (c.z + rz) * 1000, view);
     });
     const faces = [[0,1,2,3],[0,4,5,1],[1,5,6,2],[2,6,7,3],[3,7,4,0],[4,7,6,5]].map((ids) => ids.flatMap((i) => {
       const point = vertices[i]; return point ? [point] : [];

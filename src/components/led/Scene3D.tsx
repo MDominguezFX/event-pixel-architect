@@ -1,8 +1,28 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Edges, Grid, OrbitControls, Text } from "@react-three/drei";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { scene3d } from "@/lib/led/scene3d";
 import { allPanels, useStore } from "@/lib/led/store";
+
+function FollowPlacement({ target, size }: { target: [number, number, number]; size: number }) {
+  const { camera, size: viewport } = useThree();
+  const previous = useRef<{ target: [number, number, number]; size: number } | null>(null);
+  useEffect(() => {
+    const old = previous.current;
+    if (old) {
+      const factor = size / old.size;
+      camera.position.set(target[0] + (camera.position.x - old.target[0]) * factor,
+        target[1] + (camera.position.y - old.target[1]) * factor,
+        target[2] + (camera.position.z - old.target[2]) * factor);
+    } else {
+      const distance = size * 1.8 / Math.min(1, viewport.width / viewport.height);
+      camera.position.set(target[0] + distance * 0.35, target[1] + distance * 0.35, target[2] + distance);
+    }
+    camera.lookAt(...target);
+    previous.current = { target, size };
+  }, [camera, target, size, viewport.width, viewport.height]);
+  return null;
+}
 
 /** Vista 3D esquemática de todas las pantallas (curvas, arcos y cilindros incluidos). */
 export default function Scene3D({ selected, dark }: { selected?: string; dark: boolean }) {
@@ -10,10 +30,11 @@ export default function Scene3D({ selected, dark }: { selected?: string; dark: b
   const panels = allPanels(st);
   const cabs = useMemo(() => scene3d(st.project, (id) => panels.find((p) => p.id === id)), [st.project, panels.length]);
   const bounds = useMemo(() => {
-    if (!cabs.length) return { cx: 0, cz: 0, size: 6, top: 2 };
-    const xs = cabs.map((c) => c.x), zs = cabs.map((c) => c.z), ys = cabs.map((c) => c.y + c.h / 2);
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
-    return { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, size: Math.max(maxX - minX, maxZ - minZ, Math.max(...ys), 3), top: Math.max(...ys) };
+    if (!cabs.length) return { cx: 0, cy: 1, cz: 0, size: 6, top: 2 };
+    const minX = Math.min(...cabs.map((c) => c.x - c.w / 2)), maxX = Math.max(...cabs.map((c) => c.x + c.w / 2));
+    const minZ = Math.min(...cabs.map((c) => c.z - c.h / 2)), maxZ = Math.max(...cabs.map((c) => c.z + c.h / 2));
+    const minY = Math.min(...cabs.map((c) => c.y - c.h / 2)), maxY = Math.max(...cabs.map((c) => c.y + c.h / 2));
+    return { cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, cz: (minZ + maxZ) / 2, size: Math.max(maxX - minX, maxZ - minZ, maxY - minY, 3), top: maxY };
   }, [cabs]);
   const labels = st.project.screens.map((s) => {
     const mine = cabs.filter((c) => c.screenId === s.id);
@@ -22,11 +43,12 @@ export default function Scene3D({ selected, dark }: { selected?: string; dark: b
   }).filter((x): x is NonNullable<typeof x> => !!x);
   const d = bounds.size * 1.3;
   // Objetivo estable: solo cambia si cambian los límites, así los re-render no reinician la órbita/zoom.
-  const target = useMemo<[number, number, number]>(() => [bounds.cx, bounds.top / 2, bounds.cz], [bounds.cx, bounds.top, bounds.cz]);
+  const target = useMemo<[number, number, number]>(() => [bounds.cx, bounds.cy, bounds.cz], [bounds.cx, bounds.cy, bounds.cz]);
   const bg = dark ? "#0b1622" : "#eef3f8";
 
   return (
-    <Canvas key={st.project.screens.length} dpr={[1, 2]} camera={{ position: [bounds.cx + d * 0.35, bounds.top * 0.8 + d * 0.35, bounds.cz + d], fov: 45, near: 0.05, far: 1000 }}>
+    <Canvas key={st.project.screens.length} dpr={[1, 2]} camera={{ fov: 45, near: 0.05, far: 1000 }}>
+      <FollowPlacement target={target} size={bounds.size} />
       <color attach="background" args={[bg]} />
       <hemisphereLight args={["#ffffff", "#6b7c8f", 0.9]} />
       <directionalLight position={[5, 10, 8]} intensity={1.1} />
