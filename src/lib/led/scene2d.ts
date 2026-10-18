@@ -25,7 +25,7 @@ export function sceneOffset(dx: number, dy: number, view: SceneView): ScenePoint
 
 export type MovePlane = "vertical" | "suelo";
 export function moveSceneScreen(s: Screen, dx: number, dy: number, view: SceneView, plane: MovePlane, lookup: PanelLookup): Screen {
-  if (view === "desarrollada") return { ...s, x: s.x + dx, y: s.y + dy };
+  if (view === "desarrollada") return { ...s, developedX: (s.developedX ?? 0) + dx, developedY: (s.developedY ?? 0) + dy };
   if (plane === "suelo" && view === "espacial") {
     return { ...s, x: s.x + COS * dx + dy, z: (s.z ?? 0) - dx / 2 + Math.sqrt(3) * dy };
   }
@@ -35,17 +35,24 @@ export function moveSceneScreen(s: Screen, dx: number, dy: number, view: SceneVi
 }
 
 export function scene2d(p: Project, lookup: PanelLookup, view: SceneView): Panel2D[] {
-  if (view === "desarrollada") return p.screens.flatMap((s) => s.cabinets.flatMap((c) => {
+  let nextX = 0;
+  if (view === "desarrollada") return p.screens.flatMap((s) => {
+    const offsetX = s.developedX ?? nextX, offsetY = s.developedY ?? 0;
+    const panels = s.cabinets.flatMap((c) => {
     const panel = lookup(c.panelId);
     if (!panel) return [];
     const d = cabDims(c, panel), angle = (c.angleDeg ?? 0) * Math.PI / 180;
-    const cx = s.x + c.x + d.w / 2, cy = s.y + c.y + d.h / 2;
+    const cx = offsetX + c.x + d.w / 2, cy = offsetY + c.y + d.h / 2;
     const points = ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([x, y]) => ({
       x: cx + x * d.w / 2 * Math.cos(angle) - y * d.h / 2 * Math.sin(angle),
       y: cy + x * d.w / 2 * Math.sin(angle) + y * d.h / 2 * Math.cos(angle),
     }));
     return [{ id: c.id, screenId: s.id, faces: [points], depth: 0 }];
-  }));
+    });
+    const bounds = sceneBounds(panels);
+    nextX = Math.max(nextX, bounds.x + bounds.w + 1000);
+    return panels;
+  });
   return scene3d(p, lookup).map((c) => {
     const vertices = ([[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]] as const).map(([a,b,d]) => {
       const x = a * c.w * 0.985 / 2, y = b * c.h * 0.985 / 2, z = d * 0.08 / 2;
@@ -60,8 +67,11 @@ export function scene2d(p: Project, lookup: PanelLookup, view: SceneView): Panel
         rz = ry * Math.sin(rotX) + rz * Math.cos(rotX);
         ry = ny;
       }
-      return project((c.x + yx) * 1000,
-        (c.y + ry) * 1000, (c.z + rz) * 1000, view);
+      const yaw = c.yaw ?? 0;
+      const finalX = yx * Math.cos(yaw) + rz * Math.sin(yaw);
+      const finalZ = -yx * Math.sin(yaw) + rz * Math.cos(yaw);
+      return project((c.x + finalX) * 1000,
+        (c.y + ry) * 1000, (c.z + finalZ) * 1000, view);
     });
     const faces = [[0,1,2,3],[0,4,5,1],[1,5,6,2],[2,6,7,3],[3,7,4,0],[4,7,6,5]].map((ids) => ids.flatMap((i) => {
       const point = vertices[i]; return point ? [point] : [];

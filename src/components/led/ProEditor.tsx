@@ -8,6 +8,7 @@ import { allPanels, redo, undo, update, useStore } from "@/lib/led/store";
 import { scene2d, sceneBounds, moveSceneScreen, type MovePlane, type SceneView } from "@/lib/led/scene2d";
 import { sceneHeight } from "@/lib/led/scene3d";
 import { Btn, Card, Field, inputCls, Num } from "./ui";
+import { ScreenRotation } from "./ScreenRotation";
 
 const KINDS: { id: ScreenKind; label: string }[] = [
   { id: "principal", label: "Principal" }, { id: "lateral", label: "Lateral" }, { id: "totem", label: "Tótem" },
@@ -72,7 +73,14 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     const s = p.screens.find((x) => x.id === id);
     if (!s) return;
     const q = pointer(e);
-    drag.current = { screen: structuredClone(s), sx: q.x, sy: q.y };
+    const source = structuredClone(s);
+    if (projection === "desarrollada") {
+      const bounds = sceneBounds(scene.filter((c) => c.screenId === id));
+      const local = sceneBounds(scene2d({ ...p, screens: [{ ...s, developedX: 0, developedY: 0 }] }, lookup, "desarrollada"));
+      source.developedX = bounds.x - local.x;
+      source.developedY = bounds.y - local.y;
+    }
+    drag.current = { screen: source, sx: q.x, sy: q.y };
     if (id) onSelect(id);
   };
   const onMove = (e: React.PointerEvent) => {
@@ -80,7 +88,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
     const q = pointer(e);
     const next = moveSceneScreen(d.screen, (q.x - d.sx) / view.k, (q.y - d.sy) / view.k, projection, movePlane, lookup);
     next.x = sn(next.x);
-    if (projection === "desarrollada") next.y = sn(next.y);
+    if (projection === "desarrollada") { next.developedX = sn(next.developedX ?? 0); next.developedY = sn(next.developedY ?? 0); }
     else if (movePlane === "suelo" && projection === "espacial") next.z = sn(next.z ?? 0);
     else next.mountHeightM = sn((next.mountHeightM ?? 0) * 1000) / 1000;
     d.next = next;
@@ -88,7 +96,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
   };
   const onUp = () => {
     const d = drag.current; drag.current = null;
-    if (d?.next) { const next = d.next; mod(d.screen.id, (s) => { s.x = next.x; s.y = next.y; s.z = next.z; s.mountHeightM = next.mountHeightM; }); }
+    if (d?.next) { const next = d.next; mod(d.screen.id, (s) => { s.x = next.x; s.y = next.y; s.z = next.z; s.mountHeightM = next.mountHeightM; s.developedX = next.developedX; s.developedY = next.developedY; }); }
     setLive(null);
   };
   const zoom = (f: number) => {
@@ -199,6 +207,7 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
         <Btn variant="outline" onClick={() => align("top")}>Alinear arriba</Btn>
         <Btn variant="outline" onClick={() => align("distH")} disabled={p.screens.length < 3}>Distribuir H</Btn>
       </div>
+      {sel && <div className="mt-3 border-t border-border pt-3"><ScreenRotation screen={sel} onChange={(values) => mod(sel.id, (s) => { s.mountHeightM = sceneHeight(s, lookup); Object.assign(s, values); })} /></div>}
       {sel && (
         <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted p-2 sm:grid-cols-3 xl:grid-cols-6" role="group" aria-label="Posición de pantalla">
           <Field label="Nombre" className="col-span-2 sm:col-span-1"><input className={inputCls} value={sel.name} onChange={(e) => mod(sel.id, (s) => { s.name = e.target.value; })} /></Field>
