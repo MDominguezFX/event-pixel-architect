@@ -31,12 +31,14 @@ jobs:
         with:
           node-version: 22
 
+      - name: Instalar Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Instalar dependencias
-        run: npm install
+        run: bun install --frozen-lockfile
 
       - name: Compilar proyecto
-        run: npm run build
-
+        run: bun run build
       - name: Preparar Pages
         uses: actions/configure-pages@v5
 
