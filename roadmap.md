@@ -15,4 +15,4 @@
 - [x] Optimizar cableado automáticamente (menos puertos)
 - [x] Mostrar en el editor 2D los mismos gabinetes y formas que en 3D
 - [x] Eliminar diagonales del recorrido de cableado
-- [ ] Corregir ubicación libre de pantallas desde el editor de escena y verificar sincronización 3D
+- [x] Corregir ubicación libre de pantallas desde el editor de escena y verificar sincronización 3D
