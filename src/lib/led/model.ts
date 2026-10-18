@@ -38,6 +38,7 @@ export interface Screen {
   x: number; // posición en el layout general (mm), respecto del origen
   y: number;
   numbering: { order: NumberOrder; start: Corner };
+  z?: number; // profundidad de escena en mm; independiente del plano desarrollado
   mixConfirmed: boolean; // usuario confirma compatibilidad mecánica de la mezcla
   mount?: "pared" | "techo"; // techo: la pantalla se dibuja horizontal en la vista 3D (esquemático)
   mountTiltDeg?: number; // inclinación de montaje de toda la pantalla (0 = vertical/pared, 90 = techo horizontal); esquemático, no cambia píxeles
