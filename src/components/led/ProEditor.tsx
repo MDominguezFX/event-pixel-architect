@@ -1,3 +1,4 @@
+import { t, translateValue, useLocale } from "@/lib/i18n/react";
 import { useEffect, useRef, useState } from "react";
 import { select } from "d3-selection";
 import { zoom as createZoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
@@ -17,6 +18,7 @@ const KINDS: { id: ScreenKind; label: string }[] = [
 const SCREEN_FILLS = ["fill-scene-1", "fill-scene-2", "fill-scene-3", "fill-scene-4", "fill-scene-5", "fill-scene-6"];
 
 export function ProEditor({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
+  useLocale();
   const st = useStore();
   const panels = allPanels(st);
   const lookup = (id: string) => panels.find((p) => p.id === id);
@@ -151,77 +153,76 @@ export function ProEditor({ selected, onSelect }: { selected: string; onSelect: 
   const fs = 12 / view.k;
 
   return (
-    <Card title="Editor de escena (2D)" actions={
+    <Card title={t("Editor de escena (2D)")} actions={
       <div className="flex flex-wrap items-center gap-1">
-        <Btn variant="outline" className="h-8 px-2" title="Deshacer (Ctrl+Z)" disabled={!st.past.length} onClick={undo}><Undo2 size={16} /> <span className="hidden sm:inline">Deshacer</span></Btn>
-        <Btn variant="outline" className="h-8 px-2" title="Rehacer (Ctrl+Y)" disabled={!st.future.length} onClick={redo}><Redo2 size={16} /> <span className="hidden sm:inline">Rehacer</span></Btn>
-        <Btn variant="ghost" className="h-8 px-2" onClick={() => zoom(1.25)} title="Acercar"><ZoomIn size={16} /></Btn>
-        <Btn variant="ghost" className="h-8 px-2" onClick={() => zoom(0.8)} title="Alejar"><ZoomOut size={16} /></Btn>
-        <Btn variant="ghost" className="h-8 px-2 text-xs" onClick={fit}>Encuadrar</Btn>
+        <Btn variant="outline" className="h-8 px-2" title={t("Deshacer (Ctrl+Z)")} disabled={translateValue(!st.past.length)} onClick={translateValue(undo)}><Undo2 size={translateValue(16)} /> <span className="hidden sm:inline">{t("Deshacer")}</span></Btn>
+        <Btn variant="outline" className="h-8 px-2" title={t("Rehacer (Ctrl+Y)")} disabled={translateValue(!st.future.length)} onClick={translateValue(redo)}><Redo2 size={translateValue(16)} /> <span className="hidden sm:inline">{t("Rehacer")}</span></Btn>
+        <Btn variant="ghost" className="h-8 px-2" onClick={() => zoom(1.25)} title={t("Acercar")}><ZoomIn size={translateValue(16)} /></Btn>
+        <Btn variant="ghost" className="h-8 px-2" onClick={() => zoom(0.8)} title={t("Alejar")}><ZoomOut size={translateValue(16)} /></Btn>
+        <Btn variant="ghost" className="h-8 px-2 text-xs" onClick={translateValue(fit)}>{t("Encuadrar")}</Btn>
       </div>}>
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Vista del plano 2D">
+        <div className="flex flex-wrap gap-1" role="group" aria-label={t("Vista del plano 2D")}>
           {([['espacial', 'Espacial'], ['frontal', 'Frontal'], ['lateral', 'Lateral'], ['desarrollada', 'Desarrollada']] as const).map(([id, label]) =>
-            <Btn key={id} aria-pressed={projection === id} variant={projection === id ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setProjection(id)}>{label}</Btn>)}
+            <Btn key={translateValue(id)} aria-pressed={translateValue(projection === id)} variant={translateValue(projection === id ? "default" : "outline")} className="h-8 px-2 text-xs" onClick={() => setProjection(id)}>{translateValue(label)}</Btn>)}
         </div>
-        {projection === "espacial" && <div className="flex gap-1" role="group" aria-label="Plano de movimiento">
-          <Btn variant={movePlane === "vertical" ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setMovePlane("vertical")} title="Mover horizontalmente y ajustar altura">Horizontal / altura</Btn>
-          <Btn variant={movePlane === "suelo" ? "default" : "outline"} className="h-8 px-2 text-xs" onClick={() => setMovePlane("suelo")} title="Mover horizontalmente y en profundidad manteniendo la altura">Horizontal / profundidad</Btn>
+        {projection === "espacial" && <div className="flex gap-1" role="group" aria-label={t("Plano de movimiento")}>
+          <Btn variant={translateValue(movePlane === "vertical" ? "default" : "outline")} className="h-8 px-2 text-xs" onClick={() => setMovePlane("vertical")} title={t("Mover horizontalmente y ajustar altura")}>{t("Horizontal / altura")}</Btn>
+          <Btn variant={translateValue(movePlane === "suelo" ? "default" : "outline")} className="h-8 px-2 text-xs" onClick={() => setMovePlane("suelo")} title={t("Mover horizontalmente y en profundidad manteniendo la altura")}>{t("Horizontal / profundidad")}</Btn>
         </div>}
-        <label className="flex items-center gap-1">Grilla
-          <select className="rounded border border-input bg-background px-1" value={snap} onChange={(e) => setSnap(Number(e.target.value))}>
-            <option value={0}>sin ajuste</option><option value={10}>10 mm</option><option value={100}>100 mm</option><option value={250}>250 mm</option><option value={500}>500 mm</option>
+        <label className="flex items-center gap-1">{t("Grilla")} <select className="rounded border border-input bg-background px-1" value={translateValue(snap)} onChange={(e) => setSnap(Number(e.target.value))}>
+            <option value={translateValue(0)}>{t("sin ajuste")}</option><option value={translateValue(10)}>{t("10 mm")}</option><option value={translateValue(100)}>{t("100 mm")}</option><option value={translateValue(250)}>{t("250 mm")}</option><option value={translateValue(500)}>{t("500 mm")}</option>
           </select></label>
-        <label className="flex items-center gap-1"><input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />Ver grilla</label>
-        <label className="flex items-center gap-1"><input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />Etiquetas</label>
-        <label className="flex items-center gap-1"><input type="checkbox" checked={showDims} onChange={(e) => setShowDims(e.target.checked)} />Cotas</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={translateValue(showGrid)} onChange={(e) => setShowGrid(e.target.checked)} />{t("Ver grilla")}</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={translateValue(showLabels)} onChange={(e) => setShowLabels(e.target.checked)} />{t("Etiquetas")}</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={translateValue(showDims)} onChange={(e) => setShowDims(e.target.checked)} />{t("Cotas")}</label>
       </div>
-      <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} aria-label="Editor de escena 2D" className="aspect-[1000/560] w-full touch-none rounded-md border border-border bg-muted cursor-grab active:cursor-grabbing"
-        onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null; setLive(null); }}>
-        <g transform={`scale(${view.k}) translate(${-view.x} ${-view.y})`}>
-          {gxs.map((x) => <line key={"x" + x} x1={x} y1={view.y} x2={x} y2={view.y + vh / view.k} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
-          {gys.map((y) => <line key={"y" + y} x1={view.x} y1={y} x2={view.x + vw / view.k} y2={y} stroke="currentColor" className="text-border" strokeWidth={1 / view.k} />)}
-          <path d={`M${-fs * 2} 0H${fs * 2}M0 ${-fs * 2}V${fs * 2}`} stroke="currentColor" className="text-muted-foreground" strokeWidth={2 / view.k} />
-          {projection === "lateral" && <line x1={view.x} y1={0} x2={view.x + vw / view.k} y2={0} stroke="currentColor" className="text-muted-foreground" strokeWidth={1.5 / view.k} />}
+      <svg ref={translateValue(svgRef)} viewBox={translateValue(`0 0 ${vw} ${vh}`)} aria-label={t("Editor de escena 2D")} className="aspect-[1000/560] w-full touch-none rounded-md border border-border bg-muted cursor-grab active:cursor-grabbing"
+        onPointerMove={translateValue(onMove)} onPointerUp={translateValue(onUp)} onPointerCancel={() => { drag.current = null; setLive(null); }}>
+        <g transform={translateValue(`scale(${view.k}) translate(${-view.x} ${-view.y})`)}>
+          {gxs.map((x) => <line key={translateValue("x" + x)} x1={translateValue(x)} y1={translateValue(view.y)} x2={translateValue(x)} y2={translateValue(view.y + vh / view.k)} stroke="currentColor" className="text-border" strokeWidth={translateValue(1 / view.k)} />)}
+          {gys.map((y) => <line key={translateValue("y" + y)} x1={translateValue(view.x)} y1={translateValue(y)} x2={translateValue(view.x + vw / view.k)} y2={translateValue(y)} stroke="currentColor" className="text-border" strokeWidth={translateValue(1 / view.k)} />)}
+          <path d={translateValue(`M${-fs * 2} 0H${fs * 2}M0 ${-fs * 2}V${fs * 2}`)} stroke="currentColor" className="text-muted-foreground" strokeWidth={translateValue(2 / view.k)} />
+          {projection === "lateral" && <line x1={translateValue(view.x)} y1={translateValue(0)} x2={translateValue(view.x + vw / view.k)} y2={translateValue(0)} stroke="currentColor" className="text-muted-foreground" strokeWidth={translateValue(1.5 / view.k)} />}
           {p.screens.map((s, i) => {
             const t = screenStats(s, lookup);
             const cabinets = scene.filter((c) => c.screenId === s.id);
             const bounds = sceneBounds(cabinets);
             return (
-              <g key={s.id} data-screen={s.id} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
-                {cabinets.map((c) => <g key={c.id} data-cabinet={c.id}>
-                  {c.faces.map((face, j) => <polygon key={j} points={face.map((q) => `${q.x},${q.y}`).join(' ')}
-                    className={`${SCREEN_FILLS[i % SCREEN_FILLS.length]} ${s.id === selected ? "stroke-accent" : "stroke-foreground"}`}
-                    fillOpacity={0.9} strokeWidth={(s.id === selected ? 1.5 : 0.8) / view.k} />)}
+              <g key={translateValue(s.id)} data-screen={translateValue(s.id)} onPointerDown={(e) => onDown(e, s.id)} className="cursor-move">
+                {cabinets.map((c) => <g key={translateValue(c.id)} data-cabinet={translateValue(c.id)}>
+                  {c.faces.map((face, j) => <polygon key={translateValue(j)} points={face.map((q) => `${q.x},${q.y}`).join(' ')}
+                    className={translateValue(`${SCREEN_FILLS[i % SCREEN_FILLS.length]} ${s.id === selected ? "stroke-accent" : "stroke-foreground"}`)}
+                    fillOpacity={translateValue(0.9)} strokeWidth={translateValue((s.id === selected ? 1.5 : 0.8) / view.k)} />)}
                 </g>)}
-                {showLabels && <text x={bounds.x + bounds.w / 2} y={bounds.y - fs * 1.7} fontSize={fs} className="fill-foreground" textAnchor="middle" fontWeight={700} pointerEvents="none">{s.name}</text>}
-                {showDims && <text x={bounds.x + bounds.w / 2} y={bounds.y - fs * 0.4} textAnchor="middle" fontSize={fs * 0.8} fill="currentColor" className="text-foreground" pointerEvents="none">{fmtM(t.widthMm)} × {fmtM(t.heightMm)}</text>}
+                {showLabels && <text x={translateValue(bounds.x + bounds.w / 2)} y={translateValue(bounds.y - fs * 1.7)} fontSize={translateValue(fs)} className="fill-foreground" textAnchor="middle" fontWeight={translateValue(700)} pointerEvents="none">{s.name}</text>}
+                {showDims && <text x={translateValue(bounds.x + bounds.w / 2)} y={translateValue(bounds.y - fs * 0.4)} textAnchor="middle" fontSize={translateValue(fs * 0.8)} fill="currentColor" className="text-foreground" pointerEvents="none">{translateValue(fmtM(t.widthMm))} × {translateValue(fmtM(t.heightMm))}</text>}
               </g>
             );
           })}
         </g>
       </svg>
-      {projection === "lateral" && <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>↑ Altura · m</span><span>Profundidad · m →</span></div>}
+      {projection === "lateral" && <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>{t("↑ Altura · m")}</span><span>{t("Profundidad · m →")}</span></div>}
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <select className={inputCls + " w-auto"} value="" onChange={(e) => e.target.value && addScreen(e.target.value as ScreenKind)}>
-          <option value="">+ Agregar pantalla…</option>{KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+        <select className={translateValue(inputCls + " w-auto")} value="" onChange={(e) => e.target.value && addScreen(e.target.value as ScreenKind)}>
+          <option value="">{t("+ Agregar pantalla…")}</option>{KINDS.map((k) => <option key={translateValue(k.id)} value={translateValue(k.id)}>{translateValue(k.label)}</option>)}
         </select>
-        <Btn variant="outline" onClick={() => align("left")}>Alinear izq.</Btn>
-        <Btn variant="outline" onClick={() => align("top")}>Alinear arriba</Btn>
-        <Btn variant="outline" onClick={() => align("distH")} disabled={p.screens.length < 3}>Distribuir H</Btn>
+        <Btn variant="outline" onClick={() => align("left")}>{t("Alinear izq.")}</Btn>
+        <Btn variant="outline" onClick={() => align("top")}>{t("Alinear arriba")}</Btn>
+        <Btn variant="outline" onClick={() => align("distH")} disabled={p.screens.length < 3}>{t("Distribuir H")}</Btn>
       </div>
-      {sel && <div className="mt-3 border-t border-border pt-3"><ScreenRotation screen={sel} onChange={(values) => mod(sel.id, (s) => { s.mountHeightM = sceneHeight(s, lookup); Object.assign(s, values); })} /></div>}
+      {sel && <div className="mt-3 border-t border-border pt-3"><ScreenRotation screen={translateValue(sel)} onChange={(values) => mod(sel.id, (s) => { s.mountHeightM = sceneHeight(s, lookup); Object.assign(s, values); })} /></div>}
       {sel && (
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted p-2 sm:grid-cols-3 xl:grid-cols-6" role="group" aria-label="Posición de pantalla">
-          <Field label="Nombre" className="col-span-2 sm:col-span-1"><input className={inputCls} value={sel.name} onChange={(e) => mod(sel.id, (s) => { s.name = e.target.value; })} /></Field>
-          <Field label="Tipo"><select className={inputCls} value={sel.kind} onChange={(e) => mod(sel.id, (s) => { s.kind = e.target.value as ScreenKind; })}>{KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</select></Field>
-          <Field label="X mm"><Num value={sel.x} onChange={(v) => mod(sel.id, (s) => { s.x = Math.round(v ?? 0); })} /></Field>
-          <Field label="Y mm"><Num value={sel.y} onChange={(v) => mod(sel.id, (s) => { s.y = Math.round(v ?? 0); })} /></Field>
-           <Field label="Altura m"><Num value={sceneHeight(sel, lookup)} step={0.1} onChange={(v) => mod(sel.id, (s) => { s.mountHeightM = v ?? 0; })} /></Field>
-           <Field label="Profundidad m"><Num value={(sel.z ?? 0) / 1000} step={0.1} onChange={(v) => mod(sel.id, (s) => { s.z = (v ?? 0) * 1000; })} /></Field>
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted p-2 sm:grid-cols-3 xl:grid-cols-6" role="group" aria-label={t("Posición de pantalla")}>
+          <Field label={t("Nombre")} className="col-span-2 sm:col-span-1"><input className={translateValue(inputCls)} value={sel.name} onChange={(e) => mod(sel.id, (s) => { s.name = e.target.value; })} /></Field>
+          <Field label={t("Tipo")}><select className={translateValue(inputCls)} value={translateValue(sel.kind)} onChange={(e) => mod(sel.id, (s) => { s.kind = e.target.value as ScreenKind; })}>{KINDS.map((k) => <option key={translateValue(k.id)} value={translateValue(k.id)}>{translateValue(k.label)}</option>)}</select></Field>
+          <Field label={t("X mm")}><Num value={translateValue(sel.x)} onChange={(v) => mod(sel.id, (s) => { s.x = Math.round(v ?? 0); })} /></Field>
+          <Field label={t("Y mm")}><Num value={translateValue(sel.y)} onChange={(v) => mod(sel.id, (s) => { s.y = Math.round(v ?? 0); })} /></Field>
+           <Field label={t("Altura m")}><Num value={translateValue(sceneHeight(sel, lookup))} step={translateValue(0.1)} onChange={(v) => mod(sel.id, (s) => { s.mountHeightM = v ?? 0; })} /></Field>
+           <Field label={t("Profundidad m")}><Num value={translateValue((sel.z ?? 0) / 1000)} step={translateValue(0.1)} onChange={(v) => mod(sel.id, (s) => { s.z = (v ?? 0) * 1000; })} /></Field>
           <div className="col-span-2 flex items-end gap-1 sm:col-span-1">
-            <Btn variant="outline" title="Duplicar" onClick={() => { const c = structuredClone(sel); c.id = uid(); c.name += " (copia)"; c.x += 1000; c.cabinets.forEach((k) => (k.id = uid())); update((pr) => { pr.screens.push(c); return pr; }); onSelect(c.id); }}><Plus size={14} /><Copy size={14} /></Btn>
-            <Btn variant="danger" title="Eliminar" disabled={p.screens.length < 2} onClick={() => { const next = p.screens.find((x) => x.id !== sel.id); if (!next) return; update((pr) => { pr.screens = pr.screens.filter((x) => x.id !== sel.id); return pr; }); onSelect(next.id); }}><Trash2 size={14} /></Btn>
+            <Btn variant="outline" title={t("Duplicar")} onClick={() => { const c = structuredClone(sel); c.id = uid(); c.name += " (copia)"; c.x += 1000; c.cabinets.forEach((k) => (k.id = uid())); update((pr) => { pr.screens.push(c); return pr; }); onSelect(c.id); }}><Plus size={translateValue(14)} /><Copy size={translateValue(14)} /></Btn>
+            <Btn variant="danger" title={t("Eliminar")} disabled={p.screens.length < 2} onClick={() => { const next = p.screens.find((x) => x.id !== sel.id); if (!next) return; update((pr) => { pr.screens = pr.screens.filter((x) => x.id !== sel.id); return pr; }); onSelect(next.id); }}><Trash2 size={translateValue(14)} /></Btn>
           </div>
         </div>
       )}
