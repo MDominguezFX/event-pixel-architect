@@ -188,7 +188,11 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     }
     let y = 30;
     doc.setFontSize(9);
-    for (const [a, b] of rows) { doc.setFont("helvetica", "bold"); doc.text(localizeExport(a!), M, y); doc.setFont("helvetica", "normal"); doc.text(localizeExport(doc.splitTextToSize(b!, PW / 2 - 50))!), PW / 2 - 50), M + 40, y); y += 6; }
+    for (const [a, b] of rows) {
+      if (a === undefined || b === undefined) continue;
+      doc.setFont("helvetica", "bold"); doc.text(localizeExport(a), M, y);
+      doc.setFont("helvetica", "normal"); doc.text(doc.splitTextToSize(localizeExport(b), PW / 2 - 50), M + 40, y); y += 6;
+    }
     y += 4; doc.setFont("helvetica", "bold"); doc.text(localizeExport("Tipo · Cant. · Medida · Resolución · Pitch real · Peso · Consumo máx. · Cases"), M, y); y += 6; doc.setFont("helvetica", "normal");
     for (const t of st.types) {
       doc.text(localizeExport(`${t.panel.name}${t.rotated ? " (girado)" : ""} · ${t.count} · ${t.panel.widthMm}×${t.panel.heightMm} mm · ${t.panel.resX}×${t.panel.resY} px · ${realPitch(t.panel).x.toFixed(3)} mm · ${nd(t.weightKg, "kg")} · ${nd(t.powerMaxW, "W")} · ${t.cases ?? "Sin datos"}`), M, y);
