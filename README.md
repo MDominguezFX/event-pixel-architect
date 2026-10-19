@@ -46,4 +46,10 @@ El XML **no se inventa**: se requiere importar un preset real de Advanced Output
 - Prueba real de apertura del XML en Arena (requiere preset de la versión objetivo).
 - Modelos de marca: cargar sólo con datos de fichas oficiales.
 - Vista 3D esquemática no implementada (hay vistas desarrollada y superior).
-- Interfaz sólo en español (estructura lista para sumar inglés).
+## Idiomas
+- Selector ES / EN / PT (portugués brasileño), sin recarga y sin reiniciar el proyecto.
+- Primera visita: idioma del navegador; español si no está disponible. Preferencia guardada separadamente en `mansso.language`.
+- Diccionarios JSON locales en `src/lib/i18n/locales`, importados bajo demanda. Sin dependencias nuevas ni peticiones de traducción externas.
+- Textos de interfaz, validación, planos PDF y PNG traducidos en la presentación. Nombres de proyectos, pantallas, modelos y datos importados se conservan literalmente; JSON, CSV y XML mantienen su estructura.
+- Pruebas: `bunx vitest run src/test/i18n.test.ts`; validación de descargas PDF/PNG realizada en navegador para los tres idiomas.
+- Tamaño de diccionarios: ES 30,2 KB (7,4 KB gzip), EN 29,3 KB (10,1 KB gzip), PT-BR 30,4 KB (9,5 KB gzip). Solo se solicita el seleccionado. Sin un artefacto de producción anterior en el entorno no se pudo comparar el tamaño total del build antes/después; estas cifras son de los diccionarios, no del bundle producido.

@@ -1,5 +1,10 @@
 import { t } from "@/lib/i18n/core";
-const localizeExport = <T extends string | string[]>(text: T): T => (Array.isArray(text) ? text.map(t) : t(text as string)) as T;
+const translateExportText = (text: string): string => {
+  const translated = t(text);
+  if (translated !== text) return translated;
+  return text.split(" · ").map((part) => t(part)).join(" · ");
+};
+const localizeExport = <T extends string | string[]>(text: T): T => (Array.isArray(text) ? text.map(translateExportText) : translateExportText(text as string)) as T;
 // Exportadores PNG (canvas), PDF (jsPDF vectorial), JSON y CSV. Todo local en el navegador.
 import { jsPDF } from "jspdf";
 import { realPitch } from "./catalog";
@@ -171,7 +176,7 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     // Tabla de equipamiento
     frame(`${s.name} — datos y equipamiento`);
     const st = screenStats(s, lookup);
-    const nd = (v: number | null, u: string) => (v == null ? "Sin datos" : `${v.toLocaleString("es-AR")} ${u}`);
+    const nd = (v: number | null, u: string) => (v == null ? t("Sin datos") : `${v.toLocaleString("es-AR")} ${u}`);
     const rows: string[][] = [
       ["Medidas", `${fmtM(st.widthMm)} × ${fmtM(st.heightMm)}`], ["Superficie LED", `${st.areaM2.toFixed(3)} m²`],
       ["Envolvente", `${st.envelopeM2.toFixed(3)} m²`], ["Resolución canvas", `${st.resX} × ${st.resY} px`],
@@ -182,9 +187,9 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
       const first = lookup(s.cabinets[0]!.panelId)!;
       const cols = s.cabinets.filter((c) => c.y === s.cabinets[0]!.y).length;
       const cr = computeCurve(s.geometry, cols, s.cabinets[0]!.rotated ? first.heightMm : first.widthMm, first);
-      rows.push(["Geometría", `${s.geometry.type} · ${cr.faceted ? "facetada" : "continua"}`], ["Apertura", `${cr.apertureDeg.toFixed(2)}°`],
-        ["Radio", cr.radiusMm ? `${fmtM(cr.radiusMm)} (${cr.radiusRef})` : "-"], ["Frente / profundidad", `${fmtM(cr.frontWidthMm)} / ${fmtM(cr.depthMm)}`]);
-      if (cr.warnings.length || cr.errors.length) rows.push(["Avisos", [...cr.errors, ...cr.warnings].join(" ")]);
+      rows.push(["Geometría", `${t(s.geometry.type)} · ${t(cr.faceted ? "facetada" : "continua")}`], ["Apertura", `${cr.apertureDeg.toFixed(2)}°`],
+        ["Radio", cr.radiusMm ? `${fmtM(cr.radiusMm)} (${t(cr.radiusRef)})` : "-"], ["Frente / profundidad", `${fmtM(cr.frontWidthMm)} / ${fmtM(cr.depthMm)}`]);
+      if (cr.warnings.length || cr.errors.length) rows.push(["Avisos", [...cr.errors, ...cr.warnings].map(t).join(" ")]);
     }
     let y = 30;
     doc.setFontSize(9);
@@ -195,7 +200,7 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     }
     y += 4; doc.setFont("helvetica", "bold"); doc.text(localizeExport("Tipo · Cant. · Medida · Resolución · Pitch real · Peso · Consumo máx. · Cases"), M, y); y += 6; doc.setFont("helvetica", "normal");
     for (const t of st.types) {
-      doc.text(localizeExport(`${t.panel.name}${t.rotated ? " (girado)" : ""} · ${t.count} · ${t.panel.widthMm}×${t.panel.heightMm} mm · ${t.panel.resX}×${t.panel.resY} px · ${realPitch(t.panel).x.toFixed(3)} mm · ${nd(t.weightKg, "kg")} · ${nd(t.powerMaxW, "W")} · ${t.cases ?? "Sin datos"}`), M, y);
+      doc.text(localizeExport(`${t.panel.name}${t.rotated ? localizeExport(" (girado)") : ""} · ${t.count} · ${t.panel.widthMm}×${t.panel.heightMm} mm · ${t.panel.resX}×${t.panel.resY} px · ${realPitch(t.panel).x.toFixed(3)} mm · ${nd(t.weightKg, "kg")} · ${nd(t.powerMaxW, "W")} · ${t.cases ?? localizeExport("Sin datos")}`), M, y);
       y += 6;
     }
   }
