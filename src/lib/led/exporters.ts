@@ -50,7 +50,7 @@ function drawCanvas(ctx: CanvasRenderingContext2D, plan: Plan, box: { x: number;
     } else {
       ctx.save(); ctx.fillStyle = p.color; ctx.font = `${p.bold ? "700" : "400"} ${Math.max(8, p.size * k)}px "Nunito Sans", sans-serif`;
       ctx.textAlign = p.align ?? "left"; ctx.translate(X(p.x), Y(p.y)); if (p.rot) ctx.rotate((p.rot * Math.PI) / 180);
-      ctx.fillText(p.s, 0, 0); ctx.restore();
+      ctx.fillText(localizeExport(p.s), 0, 0); ctx.restore();
     }
   }
 }
@@ -75,13 +75,13 @@ export async function exportPng(project: Project, screen: Screen, lookup: PanelL
   await document.fonts?.ready;
   const st = screenStats(screen, lookup);
   ctx.fillStyle = ink; ctx.font = `800 ${W * 0.022}px "Nunito Sans", sans-serif`;
-  ctx.fillText(`${project.name} — ${screen.name}${o.wiring ? " · Pixel Plot / Cableado" : ""}`, W * 0.04, header * 0.5, W * 0.92);
+  ctx.fillText(localizeExport(`${project.name} — ${screen.name}${o.wiring ? " · Pixel Plot / Cableado" : ""}`), W * 0.04, header * 0.5, W * 0.92);
   ctx.font = `400 ${W * 0.013}px "Nunito Sans", sans-serif`;
-  ctx.fillText(`${fmtM(st.widthMm)} × ${fmtM(st.heightMm)} · ${st.resX}×${st.resY} px · ${st.count} gabinetes · ${st.areaM2.toFixed(2)} m² · ${st.types.map((t) => t.panel.name).join(" + ")}`, W * 0.04, header * 0.85, W * 0.92);
+  ctx.fillText(localizeExport(`${fmtM(st.widthMm)} × ${fmtM(st.heightMm)} · ${st.resX}×${st.resY} px · ${st.count} gabinetes · ${st.areaM2.toFixed(2)} m² · ${st.types.map((t) => t.panel.name).join(" + ")}`), W * 0.04, header * 0.85, W * 0.92);
   let y = header;
   plans.forEach((p, i) => { const h = aspects[i]! * W * 0.92; drawCanvas(ctx, p, { x: W * 0.04, y, w: W * 0.92, h }); y += h + W * 0.04; });
   ctx.fillStyle = "#189BEA"; ctx.font = `700 ${W * 0.011}px "Nunito Sans", sans-serif`; ctx.textAlign = "right";
-  ctx.fillText("MANSSO PIXEL · MANSSO TIP / Start Solution", W * 0.96, H - footer * 0.4);
+  ctx.fillText(localizeExport("MANSSO PIXEL · MANSSO TIP / Start Solution"), W * 0.96, H - footer * 0.4);
   const blob = await new Promise<Blob>((resolve, reject) => cv.toBlob((b) => b ? resolve(b) : reject(new Error("No se pudo generar el PNG.")), "image/png"));
   download(`${safe(project.name)}_${safe(screen.name)}${o.wiring ? "_cableado" : ""}.png`, blob);
 }
@@ -132,9 +132,9 @@ function drawPdf(doc: jsPDF, plan: Plan, box: { x: number; y: number; w: number;
       doc.setFontSize(Math.max(4, (p.size * k) / 0.3528));
       if (p.rot) {
         // jsPDF ignora align con ángulo: centrar manualmente a lo largo del eje rotado.
-        const tw = doc.getTextWidth(p.s);
-        doc.text(p.s, X(p.x), Y(p.y) + (p.align === "center" ? tw / 2 : 0), { angle: -p.rot });
-      } else doc.text(p.s, X(p.x), Y(p.y), { align: p.align ?? "left" });
+        const tw = doc.getTextWidth(localizeExport(p.s));
+        doc.text(localizeExport(p.s), X(p.x), Y(p.y) + (p.align === "center" ? tw / 2 : 0), { angle: -p.rot });
+      } else doc.text(localizeExport(p.s), X(p.x), Y(p.y), { align: p.align ?? "left" });
     }
   }
 }
@@ -149,13 +149,13 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     if (page++) doc.addPage();
     doc.setFillColor(1, 95, 191); doc.rect(0, 0, PW, 14, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text("MANSSO PIXEL — LED Planner", M, 9);
+    doc.text(localizeExport("MANSSO PIXEL — LED Planner"), M, 9);
     doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    doc.text(`${project.name}${project.client ? " · " + project.client : ""} · Rev. ${project.revision} · ${new Date().toLocaleDateString("es-AR")}`, PW - M, 9, { align: "right" });
-    doc.setTextColor(11, 27, 43); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(title, M, 22);
+    doc.text(localizeExport(`${project.name}${project.client ? " · " + project.client : ""} · Rev. ${project.revision} · ${new Date().toLocaleDateString("es-AR")}`), PW - M, 9, { align: "right" });
+    doc.setTextColor(11, 27, 43); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(localizeExport(title), M, 22);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(100, 110, 120);
-    doc.text("Esquema sin escala · Documenta geometría y configuración. No valida estructura, rigging ni montaje mecánico.", M, PH - 6);
-    doc.text(`MANSSO TIP / Una herramienta de Start Solution · pág. ${page}`, PW - M, PH - 6, { align: "right" });
+    doc.text(localizeExport("Esquema sin escala · Documenta geometría y configuración. No valida estructura, rigging ni montaje mecánico."), M, PH - 6);
+    doc.text(localizeExport(`MANSSO TIP / Una herramienta de Start Solution · pág. ${page}`), PW - M, PH - 6, { align: "right" });
   };
   const box = { x: M, y: 26, w: PW - 2 * M, h: PH - 40 };
   const sec = new Set(o.sections ?? ["layout", "frontal", "superior", "datos", "slices", ...(o.wiring ? ["cableado" as const] : [])]);
@@ -188,10 +188,10 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     }
     let y = 30;
     doc.setFontSize(9);
-    for (const [a, b] of rows) { doc.setFont("helvetica", "bold"); doc.text(a!, M, y); doc.setFont("helvetica", "normal"); doc.text(doc.splitTextToSize(b!, PW / 2 - 50), M + 40, y); y += 6; }
-    y += 4; doc.setFont("helvetica", "bold"); doc.text("Tipo · Cant. · Medida · Resolución · Pitch real · Peso · Consumo máx. · Cases", M, y); y += 6; doc.setFont("helvetica", "normal");
+    for (const [a, b] of rows) { doc.setFont("helvetica", "bold"); doc.text(localizeExport(a!), M, y); doc.setFont("helvetica", "normal"); doc.text(localizeExport(doc.splitTextToSize(b!, PW / 2 - 50))!), PW / 2 - 50), M + 40, y); y += 6; }
+    y += 4; doc.setFont("helvetica", "bold"); doc.text(localizeExport("Tipo · Cant. · Medida · Resolución · Pitch real · Peso · Consumo máx. · Cases"), M, y); y += 6; doc.setFont("helvetica", "normal");
     for (const t of st.types) {
-      doc.text(`${t.panel.name}${t.rotated ? " (girado)" : ""} · ${t.count} · ${t.panel.widthMm}×${t.panel.heightMm} mm · ${t.panel.resX}×${t.panel.resY} px · ${realPitch(t.panel).x.toFixed(3)} mm · ${nd(t.weightKg, "kg")} · ${nd(t.powerMaxW, "W")} · ${t.cases ?? "Sin datos"}`, M, y);
+      doc.text(localizeExport(`${t.panel.name}${t.rotated ? " (girado)" : ""} · ${t.count} · ${t.panel.widthMm}×${t.panel.heightMm} mm · ${t.panel.resX}×${t.panel.resY} px · ${realPitch(t.panel).x.toFixed(3)} mm · ${nd(t.weightKg, "kg")} · ${nd(t.powerMaxW, "W")} · ${t.cases ?? "Sin datos"}`), M, y);
       y += 6;
     }
   }
@@ -199,11 +199,11 @@ export function exportPdf(project: Project, lookup: PanelLookup, o: PdfOpts, pro
     frame("Mapa de slices (canvas → salida)");
     doc.setFontSize(8);
     let y = 30;
-    doc.text(`Canvas ${project.mapping.canvasW}×${project.mapping.canvasH} px · Salidas: ${project.mapping.outputs.map((o) => `${o.name} ${o.w}×${o.h}`).join(", ")} · Coordenadas enteras, origen arriba-izquierda`, M, y); y += 7;
-    doc.setFont("helvetica", "bold"); doc.text("Nombre · Entrada (x,y,w,h) · Salida · (x,y,w,h)", M, y); doc.setFont("helvetica", "normal"); y += 5;
+    doc.text(localizeExport(`Canvas ${project.mapping.canvasW}×${project.mapping.canvasH} px · Salidas: ${project.mapping.outputs.map((o) => `${o.name} ${o.w}×${o.h}`).join(", ")} · Coordenadas enteras, origen arriba-izquierda`), M, y); y += 7;
+    doc.setFont("helvetica", "bold"); doc.text(localizeExport("Nombre · Entrada (x,y,w,h) · Salida · (x,y,w,h)"), M, y); doc.setFont("helvetica", "normal"); y += 5;
     for (const s of project.mapping.slices) {
       if (y > PH - 14) { frame("Mapa de slices (cont.)"); y = 30; doc.setFontSize(8); }
-      doc.text(`${s.name} · ${s.input.x},${s.input.y},${s.input.w},${s.input.h} · ${project.mapping.outputs[s.outputIndex]?.name ?? "?"} · ${s.output.x},${s.output.y},${s.output.w},${s.output.h}${s.rotation ? ` · rot ${s.rotation}°` : ""}`, M, y); y += 4.5;
+      doc.text(localizeExport(`${s.name} · ${s.input.x},${s.input.y},${s.input.w},${s.input.h} · ${project.mapping.outputs[s.outputIndex]?.name ?? "?"} · ${s.output.x},${s.output.y},${s.output.w},${s.output.h}${s.rotation ? ` · rot ${s.rotation}°` : ""}`), M, y); y += 4.5;
     }
   }
   if (!page) frame("Sin secciones seleccionadas");
