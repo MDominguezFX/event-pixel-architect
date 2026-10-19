@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { currentLocale, detectLocale, LANGUAGE_KEY, setLocale } from "@/lib/i18n/core";
+import { currentLocale, detectLocale, LANGUAGE_KEY, setLocale, t } from "@/lib/i18n/core";
 import { BUILTIN_PANELS } from "@/lib/led/catalog";
 import { newProject } from "@/lib/led/model";
 import { scene3d } from "@/lib/led/scene3d";
@@ -7,6 +7,13 @@ import { screenStats } from "@/lib/led/engine";
 
 afterEach(async () => { await setLocale("es"); localStorage.clear(); });
 describe("language preferences", () => {
+  it("translates technical drawing messages without changing names, brands or pixel values", async () => {
+    await setLocale("en");
+    expect(t("Pantalla principal: 32 gabinetes · 16.00 m² · 1024×1024 px (1.048.576 px activos)")).toBe("Pantalla principal: 32 cabinets · 16.00 m² · 1024×1024 px (1.048.576 active px)");
+    expect(t("MANSSO PIXEL")).toBe("MANSSO PIXEL");
+    await setLocale("pt-BR");
+    expect(t("Pantalla principal: 32 gabinetes · 16.00 m² · 1024×1024 px (1.048.576 px activos)")).toBe("Pantalla principal: 32 gabinetes · 16.00 m² · 1024×1024 px (1.048.576 px ativos)");
+  });
   it("supports ES, EN and Brazilian Portuguese browser preferences", () => {
     expect(detectLocale(null, ["es-AR"])).toBe("es");
     expect(detectLocale(null, ["en-US"])).toBe("en");

@@ -10,7 +10,9 @@ export function PlanView({ plan, className, onCabinetClick }: { plan: Plan; clas
       onClick={(e) => {
         if (!onCabinetClick) return;
         const svg = e.currentTarget, pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
-        const p = pt.matrixTransform(svg.getScreenCTM()!.inverse()); onCabinetClick(p.x, p.y);
+        const matrix = svg.getScreenCTM();
+        if (!matrix) return;
+        const p = pt.matrixTransform(matrix.inverse()); onCabinetClick(p.x, p.y);
       }}>
       <defs>
         <pattern id="hatch" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">

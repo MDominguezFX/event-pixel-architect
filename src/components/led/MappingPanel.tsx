@@ -74,7 +74,7 @@ export function MappingPanel() {
             <tbody>
               {m.slices.map((s, i) => (
                 <tr key={s.id} className="border-t border-border">
-                  <td className="p-0.5"><input type="checkbox" aria-label={`Seleccionar ${s.name}`} checked={pick.has(s.id)} onChange={() => setPick((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })} /></td>
+                  <td className="p-0.5"><input type="checkbox" aria-label={t(`Seleccionar ${s.name}`)} checked={pick.has(s.id)} onChange={() => setPick((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })} /></td>
                   <td className="p-1"><input className={inputCls + " h-7"} value={s.name} onChange={(e) => update((pr) => { pr.mapping.slices[i]!.name = e.target.value; return pr; })} /></td>
                   {(["x", "y", "w", "h"] as const).map((f) => <td key={"i" + f} className="p-0.5"><Num className="h-7 w-16" value={s.input[f]} onChange={(v) => setRect(i, "input", f, v)} /></td>)}
                   <td className="p-0.5"><select className={inputCls + " h-7"} value={s.outputIndex} onChange={(e) => update((pr) => { pr.mapping.slices[i]!.outputIndex = Number(e.target.value); return pr; })}>{m.outputs.map((o, j) => <option key={j} value={j}>{o.name}</option>)}</select></td>
