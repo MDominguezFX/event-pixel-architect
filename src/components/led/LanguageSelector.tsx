@@ -5,7 +5,7 @@ import { Btn } from "./ui";
 
 export function LanguageSelector() {
   const locale = useLocale();
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState(true);
   const [failed, setFailed] = useState(false);
   const select = async (next: Locale, persist: boolean) => {
     setPending(true); setFailed(false);

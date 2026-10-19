@@ -54,6 +54,6 @@ export function t(source: string): string {
   }
   return source;
 }
-export function translateValue<T>(value: T): T | string {
-  return typeof value === "string" ? t(value) : value;
+export function translateValue<T>(value: T): T {
+  return (typeof value === "string" ? t(value) : value) as T;
 }

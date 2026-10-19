@@ -201,7 +201,7 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
           <div className="mt-2 space-y-1.5">
             {opts.map((o) => (
               <div key={o.name} className="rounded-md border border-border p-2 text-xs">
-                <div className="flex items-center justify-between gap-2"><b>{o.name}</b>
+                <div className="flex items-center justify-between gap-2"><b>{t(o.name)}</b>
                   <Btn className="h-7 text-xs" disabled={!o.feasible} onClick={() => mixInp && mod((s) => { s.cabinets = buildMix(mixInp, o, band); })}>{t("Aplicar")}</Btn></div>
                 <div>{translateValue(o.large)} {t("grandes +")} {translateValue(o.small)} {t("chicos =")} <b>{translateValue(o.total)}</b> · {translateValue(fmtM(o.widthMm))} × {translateValue(fmtM(o.heightMm))} · {translateValue(o.resX)}×{translateValue(o.resY)} {t("px")}</div>
                 <div className="text-muted-foreground">{t("Dif.:")} {translateValue(o.dW >= 0 ? "+" : "")}{translateValue(o.dW)} / {translateValue(o.dH >= 0 ? "+" : "")}{translateValue(o.dH)} {t("mm ·")} {translateValue(o.cols)} {t("col ·")} {translateValue(o.bands)} {t("bandas de 1 m +")} {translateValue(o.rows - 2 * o.bands)} {t("de 0,5 m")}</div>

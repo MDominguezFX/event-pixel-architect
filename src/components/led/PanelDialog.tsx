@@ -28,7 +28,7 @@ export function PanelDialog({ initial, onSave, onClose }: { initial?: Panel; onS
           {translateValue(txt("name", "Nombre *"))}{translateValue(txt("brand", "Marca"))}{translateValue(txt("model", "Modelo"))}
           <Field label={t("Uso")}>
             <select className={inputCls} value={p.usage} onChange={(e) => set("usage", e.target.value as Usage)}>
-              {["indoor", "outdoor", "rental", "instalacion", "piso", "transparente"].map((u) => <option key={u}>{translateValue(u)}</option>)}
+              {["indoor", "outdoor", "rental", "instalacion", "piso", "transparente"].map((u) => <option key={u} value={u}>{translateValue(u)}</option>)}
             </select>
           </Field>
           {translateValue(num("widthMm", "Ancho mm *"))}{translateValue(num("heightMm", "Alto mm *"))}{translateValue(num("resX", "Píxeles H *"))}{translateValue(num("resY", "Píxeles V *"))}
