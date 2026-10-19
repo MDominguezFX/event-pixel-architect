@@ -1,14 +1,18 @@
+import { t, translateValue, useLocale } from "@/lib/i18n/react";
 import type { Plan } from "@/lib/led/plan";
 
 /** Dibuja un Plan (primitivas en mm) como SVG escalable. */
 export function PlanView({ plan, className, onCabinetClick }: { plan: Plan; className?: string; onCabinetClick?: (x: number, y: number) => void }) {
+  useLocale();
   const w = plan.maxX - plan.minX, h = plan.maxY - plan.minY;
   return (
-    <svg viewBox={`${plan.minX} ${plan.minY} ${w} ${h}`} className={className} role="img" aria-label={plan.title}
+    <svg viewBox={`${plan.minX} ${plan.minY} ${w} ${h}`} className={className} role="img" aria-label={translateValue(plan.title)}
       onClick={(e) => {
         if (!onCabinetClick) return;
         const svg = e.currentTarget, pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
-        const p = pt.matrixTransform(svg.getScreenCTM()!.inverse()); onCabinetClick(p.x, p.y);
+        const matrix = svg.getScreenCTM();
+        if (!matrix) return;
+        const p = pt.matrixTransform(matrix.inverse()); onCabinetClick(p.x, p.y);
       }}>
       <defs>
         <pattern id="hatch" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -27,7 +31,7 @@ export function PlanView({ plan, className, onCabinetClick }: { plan: Plan; clas
         return (
           <text key={i} x={p.x} y={p.y} fontSize={p.size} fill={p.color} fontWeight={p.bold ? 700 : 400}
             textAnchor={p.align === "center" ? "middle" : p.align === "right" ? "end" : "start"}
-            transform={p.rot ? `rotate(${p.rot} ${p.x} ${p.y})` : undefined} pointerEvents="none">{p.s}</text>
+            transform={p.rot ? `rotate(${p.rot} ${p.x} ${p.y})` : undefined} pointerEvents="none">{translateValue(p.s)}</text>
         );
       })}
     </svg>

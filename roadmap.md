@@ -1,4 +1,7 @@
 # Roadmap MANSSO PIXEL — LED Planner
+- [x] Implementar ES/EN/PT-BR, selector persistente y traducciones locales bajo demanda
+- [x] Verificar idiomas, exportaciones, conservación del proyecto y tamaño de diccionarios
+- [ ] Comparar tamaño total de producción antes/después (bloqueado: no hay artefacto anterior de producción disponible)
 - [x] Agregar vista lateral con arrastre en profundidad y altura, coherente con 3D
 - [x] Renombrar a MANSSO PIXEL y usar logo oficial
 - [x] Catálogo + panel custom

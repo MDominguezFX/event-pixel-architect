@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Localization uses lazy local JSON dictionaries at presentation/export boundaries only; locale selection is separate from Project storage, and domain engines and vendor formats remain locale-neutral to preserve calculations and interoperability.
 - Footer logos embed the original PNG bytes as data URLs in a browser-safe source module so Worker deployments include them without host-specific asset endpoints.
 - All LED logic lives in src/lib/led/* as pure modules (catalog, model, engine, geometry, mix, plan, mapping, resolume, exporters, persistence); UI in src/components/led/* only consumes them — keeps calculations testable and shared across plan, PNG, PDF and exports.
 - One Project model drives everything; plans are vector primitives (plan.ts) rendered by SVG, canvas and jsPDF — guarantees exports match the model.
