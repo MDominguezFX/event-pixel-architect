@@ -1,3 +1,5 @@
+import { t } from "@/lib/i18n/core";
+const localizeExport = <T extends string | string[]>(text: T): T => (Array.isArray(text) ? text.map(t) : t(text as string)) as T;
 // Exportadores PNG (canvas), PDF (jsPDF vectorial), JSON y CSV. Todo local en el navegador.
 import { jsPDF } from "jspdf";
 import { realPitch } from "./catalog";

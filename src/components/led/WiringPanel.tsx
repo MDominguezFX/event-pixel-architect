@@ -42,13 +42,13 @@ export function WiringPanel({ screen, dark }: { screen: Screen; dark: boolean })
     <div className="grid min-w-0 gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
       <Card title={`Puertos de datos · ${screen.name}`}>
         <div className="mb-3 flex gap-1 rounded-lg bg-muted p-1 text-xs font-bold">
-          <button className={translateValue(`flex-1 rounded-md py-1.5 ${!manual ? "bg-card shadow" : ""}`)} onClick={() => mod((s) => { delete s.manualRuns; })}>{t("Automático")}</button>
-          <button className={translateValue(`flex-1 rounded-md py-1.5 ${manual ? "bg-card shadow" : ""}`)} onClick={() => mod((s) => { if (!s.manualRuns?.length) s.manualRuns = [[]]; })}>{t("Manual")}</button>
+          <button className={`flex-1 rounded-md py-1.5 ${!manual ? "bg-card shadow" : ""}`} onClick={() => mod((s) => { delete s.manualRuns; })}>{t("Automático")}</button>
+          <button className={`flex-1 rounded-md py-1.5 ${manual ? "bg-card shadow" : ""}`} onClick={() => mod((s) => { if (!s.manualRuns?.length) s.manualRuns = [[]]; })}>{t("Manual")}</button>
         </div>
         {!manual && (
           <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
             <div className="flex flex-col gap-1 font-semibold">{t("Recorrido")} <span className="flex h-8 items-center rounded border border-input bg-muted px-2 font-normal">{t("Serpentina (fijo)")}</span></div>
-            <label className="flex flex-col gap-1 font-semibold">{t("Inicio")} <select className="h-8 rounded border border-input bg-background px-1" value={translateValue(screen.numbering.start)} onChange={(e) => mod((s) => { s.numbering.start = e.target.value as Corner; })}>
+            <label className="flex flex-col gap-1 font-semibold">{t("Inicio")} <select className="h-8 rounded border border-input bg-background px-1" value={screen.numbering.start} onChange={(e) => mod((s) => { s.numbering.start = e.target.value as Corner; })}>
                 <option value="tl">{t("↖ Arriba izq.")}</option><option value="tr">{t("↗ Arriba der.")}</option><option value="bl">{t("↙ Abajo izq.")}</option><option value="br">{t("↘ Abajo der.")}</option>
               </select></label>
           </div>
@@ -58,18 +58,18 @@ export function WiringPanel({ screen, dark }: { screen: Screen; dark: boolean })
           <div className="mb-2 space-y-1.5 rounded-md bg-muted p-2 text-xs">
             <p><b>{t("Cableado manual:")}</b> {t("hacé clic en los gabinetes del plano en el orden de conexión. Cuando termines un cable, tocá «Cerrar puerto» y empezá el siguiente.")}</p>
             <div className="flex flex-wrap gap-1">
-              <Btn className="h-7 px-2 text-xs" disabled={translateValue(!draft.length)} onClick={translateValue(closePort)}>{t("Cerrar puerto (")}{translateValue(draft.length)} {t("gab.)")}</Btn>
-              <Btn variant="outline" className="h-7 px-2 text-xs" disabled={translateValue(!draft.length)} onClick={() => setDraft((d) => d.slice(0, -1))}>{t("Deshacer último")}</Btn>
+              <Btn className="h-7 px-2 text-xs" disabled={!draft.length} onClick={closePort}>{t("Cerrar puerto (")}{translateValue(draft.length)} {t("gab.)")}</Btn>
+              <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!draft.length} onClick={() => setDraft((d) => d.slice(0, -1))}>{t("Deshacer último")}</Btn>
               <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!screen.manualRuns?.some((r) => r.length)} onClick={() => mod((s) => { s.manualRuns = (s.manualRuns ?? []).slice(0, -1); })}>{t("Quitar último puerto")}</Btn>
               <Btn variant="ghost" className="h-7 px-2 text-xs text-destructive" onClick={() => { mod((s) => { delete s.manualRuns; }); setDraft([]); }}>{t("Borrar todo")}</Btn>
             </div>
           </div>
         )}
-        {errors.map((e) => <Notice key={translateValue(e)} kind="error">{translateValue(e)}</Notice>)}
-        {warnings.map((e) => <Notice key={translateValue(e)}>{translateValue(e)}</Notice>)}
+        {errors.map((e) => <Notice key={e} kind="error">{translateValue(e)}</Notice>)}
+        {warnings.map((e) => <Notice key={e}>{translateValue(e)}</Notice>)}
         <ul className="space-y-1.5">
           {runs.map((r) => (
-            <li key={translateValue(r.port)} className="rounded-md border border-border p-2 text-xs">
+            <li key={r.port} className="rounded-md border border-border p-2 text-xs">
               <div className="flex items-center gap-2 font-bold">
                 <span className="h-3.5 w-3.5 shrink-0 rounded-sm" style={{ background: portColor(r.port) }} /> {t("Puerto")} {translateValue(r.port)} <span className="ml-auto font-normal text-muted-foreground">{translateValue(r.cabinets.length)} {t("gab.")}</span>
               </div>
@@ -81,7 +81,7 @@ export function WiringPanel({ screen, dark }: { screen: Screen; dark: boolean })
         <p className="mt-3 text-[11px] text-muted-foreground">{translateValue(CABLING_NOTE)}</p>
       </Card>
       <Card title={t("Pixel Plot")}>
-        <PlanView plan={translateValue(draftPrims.length ? { ...plan, prims: [...plan.prims, ...draftPrims] } : plan)} className="h-auto max-h-[70vh] w-full" onCabinetClick={translateValue(manual ? onPlanClick : undefined)} />
+        <PlanView plan={draftPrims.length ? { ...plan, prims: [...plan.prims, ...draftPrims] } : plan} className="h-auto max-h-[70vh] w-full" onCabinetClick={manual ? onPlanClick : undefined} />
       </Card>
     </div>
   );

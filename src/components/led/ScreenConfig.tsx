@@ -107,28 +107,28 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
   return (
     <div className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
       <div className="min-w-0 space-y-3">
-        <Card title={t("1 · Panel")} actions={<Btn variant="outline" className="h-8 text-xs" onClick={translateValue(onNewPanel)}>{t("+ Crear panel personalizado")}</Btn>}>
-          <select className={translateValue(inputCls)} value={translateValue(panel.id)} onChange={(e) => { const p = lookup(e.target.value)!; setGrid(cols, rows, p, false); }}>
-            {grouped.map((g) => <optgroup key={translateValue(g.id)} label={translateValue(g.label)}>{g.items.map((p) => <option key={translateValue(p.id)} value={translateValue(p.id)}>{p.name}{translateValue(p.generic ? " (genérico)" : "")}</option>)}</optgroup>)}
+        <Card title={t("1 · Panel")} actions={<Btn variant="outline" className="h-8 text-xs" onClick={onNewPanel}>{t("+ Crear panel personalizado")}</Btn>}>
+          <select className={inputCls} value={panel.id} onChange={(e) => { const p = lookup(e.target.value)!; setGrid(cols, rows, p, false); }}>
+            {grouped.map((g) => <optgroup key={g.id} label={translateValue(g.label)}>{g.items.map((p) => <option key={p.id} value={p.id}>{p.name}{translateValue(p.generic ? " (genérico)" : "")}</option>)}</optgroup>)}
           </select>
           <p className="mt-2 text-xs text-muted-foreground">
             {translateValue(panel.widthMm)}×{translateValue(panel.heightMm)} {t("mm ·")} {translateValue(panel.resX)}×{translateValue(panel.resY)} {t("px · pitch real")} {translateValue(realPitch(panel).x.toFixed(3))} {t("mm")} {translateValue(panel.generic && " · Preset genérico editable, sin compatibilidad mecánica asumida.")}
           </p>
           {panel.orientations.includes("horizontal") && (
-            <label className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={translateValue(rotated)} onChange={(e) => setGrid(cols, rows, panel, e.target.checked)} /> {t("Girar 90° (intercambia medidas y resolución)")}</label>
+            <label className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={rotated} onChange={(e) => setGrid(cols, rows, panel, e.target.checked)} /> {t("Girar 90° (intercambia medidas y resolución)")}</label>
           )}
         </Card>
 
         <Card title={t("2 · Geometría")}>
           <div className="grid grid-cols-2 gap-2">
             <Field label={t("Tipo")}>
-              <select className={translateValue(inputCls)} value={translateValue(screen.geometry.type)} onChange={(e) => mod((s) => { s.geometry.type = e.target.value as GeometryType; })}>
+              <select className={inputCls} value={screen.geometry.type} onChange={(e) => mod((s) => { s.geometry.type = e.target.value as GeometryType; })}>
                 <option value="plana">{t("Plana")}</option><option value="concava">{t("Cóncava")}</option><option value="convexa">{t("Convexa")}</option><option value="arco">{t("Arco parcial")}</option><option value="cilindro">{t("Cilindro 360°")}</option>
               </select>
             </Field>
             {screen.geometry.type !== "plana" && (
               <Field label={t("Construcción")}>
-                <select className={translateValue(inputCls)} value={translateValue(screen.geometry.mode)} onChange={(e) => mod((s) => { s.geometry.mode = e.target.value as "facetada" | "continua"; })}>
+                <select className={inputCls} value={screen.geometry.mode} onChange={(e) => mod((s) => { s.geometry.mode = e.target.value as "facetada" | "continua"; })}>
                   <option value="facetada">{t("Rígida (facetada)")}</option><option value="continua">{t("Flexible (continua)")}</option>
                 </select>
               </Field>
@@ -136,43 +136,43 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
             {screen.geometry.type !== "plana" && screen.geometry.type !== "cilindro" && (
               <>
                 <Field label={t("Parámetro de entrada")}>
-                  <select className={translateValue(inputCls)} value={translateValue(screen.geometry.input)} onChange={(e) => mod((s) => { s.geometry.input = e.target.value as never; })}>
+                  <select className={inputCls} value={screen.geometry.input} onChange={(e) => mod((s) => { s.geometry.input = e.target.value as never; })}>
                     {screen.geometry.mode === "facetada" ? <option value="angulo">{t("Ángulo entre gabinetes")}</option> : <option value="radio">{t("Radio")}</option>}
                     <option value="apertura">{t("Apertura total")}</option>
                   </select>
                 </Field>
                 {screen.geometry.input === "apertura" ? (
-                  <Field label={t("Apertura °")}><Num value={translateValue(screen.geometry.apertureDeg)} onChange={(v) => mod((s) => { s.geometry.apertureDeg = v ?? 0; })} /></Field>
+                  <Field label={t("Apertura °")}><Num value={screen.geometry.apertureDeg} onChange={(v) => mod((s) => { s.geometry.apertureDeg = v ?? 0; })} /></Field>
                 ) : screen.geometry.mode === "facetada" ? (
-                  <Field label={t("Ángulo °")}><Num value={translateValue(screen.geometry.angleDeg)} step={translateValue(0.5)} onChange={(v) => mod((s) => { s.geometry.angleDeg = v ?? 0; })} /></Field>
+                  <Field label={t("Ángulo °")}><Num value={screen.geometry.angleDeg} step={0.5} onChange={(v) => mod((s) => { s.geometry.angleDeg = v ?? 0; })} /></Field>
                 ) : (
-                  <Field label={t("Radio mm")}><Num value={translateValue(screen.geometry.radiusMm)} onChange={(v) => mod((s) => { s.geometry.radiusMm = v ?? 0; })} /></Field>
+                  <Field label={t("Radio mm")}><Num value={screen.geometry.radiusMm} onChange={(v) => mod((s) => { s.geometry.radiusMm = v ?? 0; })} /></Field>
                 )}
               </>
             )}
           </div>
-          {screen.geometry.type !== "plana" && <div className="mt-2 space-y-1">{curve.errors.map((e) => <Notice key={translateValue(e)} kind="error">{translateValue(e)}</Notice>)}{curve.warnings.map((e) => <Notice key={translateValue(e)}>{translateValue(e)}</Notice>)}</div>}
+          {screen.geometry.type !== "plana" && <div className="mt-2 space-y-1">{curve.errors.map((e) => <Notice key={e} kind="error">{translateValue(e)}</Notice>)}{curve.warnings.map((e) => <Notice key={e}>{translateValue(e)}</Notice>)}</div>}
         </Card>
 
         <Card title={t("3 · Tamaño")}>
           <div className="mb-2 flex gap-1 rounded-lg bg-muted p-1 text-xs font-bold">
-            {(["grilla", "metros"] as const).map((m) => <button key={translateValue(m)} onClick={() => setInputMode(m)} className={translateValue(`flex-1 rounded-md py-1.5 ${inputMode === m ? "bg-card shadow" : ""}`)}>{translateValue(m === "grilla" ? "Columnas × filas" : "Medidas en m")}</button>)}
+            {(["grilla", "metros"] as const).map((m) => <button key={m} onClick={() => setInputMode(m)} className={`flex-1 rounded-md py-1.5 ${inputMode === m ? "bg-card shadow" : ""}`}>{translateValue(m === "grilla" ? "Columnas × filas" : "Medidas en m")}</button>)}
           </div>
           {inputMode === "grilla" ? (
             <div className="grid grid-cols-2 gap-2">
-              <Field label={t("Columnas")}><Num value={translateValue(cols)} min={translateValue(1)} onChange={(v) => v && setGrid(v, rows)} /></Field>
-              <Field label={t("Filas")}><Num value={translateValue(rows)} min={translateValue(1)} onChange={(v) => v && setGrid(cols, v)} /></Field>
+              <Field label={t("Columnas")}><Num value={cols} min={1} onChange={(v) => v && setGrid(v, rows)} /></Field>
+              <Field label={t("Filas")}><Num value={rows} min={1} onChange={(v) => v && setGrid(cols, v)} /></Field>
               {isMix && <p className="col-span-2 text-xs text-muted-foreground">{t("Pantalla mixta: al cambiar columnas/filas se reemplaza por un formato uniforme.")}</p>}
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <Field label={t("Ancho deseado m")}><Num value={translateValue(wantW)} step={translateValue(0.1)} onChange={(v) => setWantW(v ?? 0)} /></Field>
-                <Field label={t("Alto deseado m")}><Num value={translateValue(wantH)} step={translateValue(0.1)} onChange={(v) => setWantH(v ?? 0)} /></Field>
+                <Field label={t("Ancho deseado m")}><Num value={wantW} step={0.1} onChange={(v) => setWantW(v ?? 0)} /></Field>
+                <Field label={t("Alto deseado m")}><Num value={wantH} step={0.1} onChange={(v) => setWantH(v ?? 0)} /></Field>
               </div>
               <div className="mt-2 space-y-1">
                 {wantW > 0 && wantH > 0 && suggestSizes(panel, wantW * 1000, wantH * 1000, rotated).map((o) => (
-                  <button key={translateValue(o.label)} onClick={() => setGrid(o.cols, o.rows)} className="flex w-full items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5 text-left text-xs hover:bg-muted">
+                  <button key={o.label} onClick={() => setGrid(o.cols, o.rows)} className="flex w-full items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5 text-left text-xs hover:bg-muted">
                     <span className="font-bold">{translateValue(o.label)}</span>
                     <span className="truncate">{translateValue(o.cols)}×{translateValue(o.rows)} → {translateValue(fmtM(o.widthMm))} × {translateValue(fmtM(o.heightMm))} ({translateValue(o.dW >= 0 ? "+" : "")}{translateValue(o.dW)} / {translateValue(o.dH >= 0 ? "+" : "")}{translateValue(o.dH)} {t("mm)")}</span>
                   </button>
@@ -181,28 +181,28 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
             </>
           )}
           <details className="mt-2 text-xs"><summary className="cursor-pointer font-bold text-secondary-foreground">{t("Proporciones cercanas a 16:9")}</summary>
-            <div className="mt-1 flex flex-wrap gap-1">{near169(panel).map((o) => <button key={translateValue(`${o.cols}x${o.rows}`)} className="rounded bg-muted px-2 py-1" onClick={() => setGrid(o.cols, o.rows)}>{translateValue(o.cols)}×{translateValue(o.rows)} ({translateValue(o.errPct >= 0 ? "+" : "")}{translateValue(o.errPct.toFixed(2))}%)</button>)}</div>
+            <div className="mt-1 flex flex-wrap gap-1">{near169(panel).map((o) => <button key={`${o.cols}x${o.rows}`} className="rounded bg-muted px-2 py-1" onClick={() => setGrid(o.cols, o.rows)}>{translateValue(o.cols)}×{translateValue(o.rows)} ({translateValue(o.errPct >= 0 ? "+" : "")}{translateValue(o.errPct.toFixed(2))}%)</button>)}</div>
           </details>
         </Card>
 
         <Card title={t("Mezcla 500×500 + 500×1000")}>
           <div className="grid grid-cols-2 gap-2">
-            <Field label={t("Chico (celda)")}><select className={translateValue(inputCls)} value={translateValue(smallId)} onChange={(e) => setSmallId(e.target.value)}>{panels.map((p) => <option key={translateValue(p.id)} value={translateValue(p.id)}>{p.name}</option>)}</select></Field>
-            <Field label={t("Grande (2 celdas)")}><select className={translateValue(inputCls)} value={translateValue(largeId)} onChange={(e) => setLargeId(e.target.value)}>{panels.map((p) => <option key={translateValue(p.id)} value={translateValue(p.id)}>{p.name}</option>)}</select></Field>
-            <Field label={t("Ancho m")}><Num value={translateValue(wantW)} step={translateValue(0.5)} onChange={(v) => setWantW(v ?? 0)} /></Field>
-            <Field label={t("Alto m")}><Num value={translateValue(wantH)} step={translateValue(0.5)} onChange={(v) => setWantH(v ?? 0)} /></Field>
-            <Field label={t("Stock chicos")}><Num value={translateValue(stockS)} min={translateValue(0)} onChange={translateValue(setStockS)} /></Field>
-            <Field label={t("Stock grandes")}><Num value={translateValue(stockL)} min={translateValue(0)} onChange={translateValue(setStockL)} /></Field>
-            <Field label={t("Objetivo")}><select className={translateValue(inputCls)} value={translateValue(goal)} onChange={(e) => setGoal(e.target.value as MixGoal)}><option value="menos">{t("Menos gabinetes")}</option><option value="stock">{t("Aprovechar stock")}</option><option value="grandes">{t("Priorizar 500×1000")}</option><option value="chicos">{t("Priorizar 500×500")}</option></select></Field>
-            <Field label={t("Banda chica")}><select className={translateValue(inputCls)} value={translateValue(band)} onChange={(e) => setBand(e.target.value as "arriba" | "abajo")}><option value="arriba">{t("Arriba")}</option><option value="abajo">{t("Abajo")}</option></select></Field>
+            <Field label={t("Chico (celda)")}><select className={inputCls} value={smallId} onChange={(e) => setSmallId(e.target.value)}>{panels.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+            <Field label={t("Grande (2 celdas)")}><select className={inputCls} value={largeId} onChange={(e) => setLargeId(e.target.value)}>{panels.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+            <Field label={t("Ancho m")}><Num value={wantW} step={0.5} onChange={(v) => setWantW(v ?? 0)} /></Field>
+            <Field label={t("Alto m")}><Num value={wantH} step={0.5} onChange={(v) => setWantH(v ?? 0)} /></Field>
+            <Field label={t("Stock chicos")}><Num value={stockS} min={0} onChange={setStockS} /></Field>
+            <Field label={t("Stock grandes")}><Num value={stockL} min={0} onChange={setStockL} /></Field>
+            <Field label={t("Objetivo")}><select className={inputCls} value={goal} onChange={(e) => setGoal(e.target.value as MixGoal)}><option value="menos">{t("Menos gabinetes")}</option><option value="stock">{t("Aprovechar stock")}</option><option value="grandes">{t("Priorizar 500×1000")}</option><option value="chicos">{t("Priorizar 500×500")}</option></select></Field>
+            <Field label={t("Banda chica")}><select className={inputCls} value={band} onChange={(e) => setBand(e.target.value as "arriba" | "abajo")}><option value="arriba">{t("Arriba")}</option><option value="abajo">{t("Abajo")}</option></select></Field>
           </div>
-          <label className="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={translateValue(screen.mixConfirmed)} onChange={(e) => mod((s) => { s.mixConfirmed = e.target.checked; })} />{t("Confirmo que ambos formatos son de la misma familia con compatibilidad mecánica y de montaje verificada.")}</label>
-          {!compat.ok && <div className="mt-2 space-y-1">{compat.reasons.map((r) => <Notice key={translateValue(r)}>{translateValue(r)}</Notice>)}</div>}
+          <label className="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={screen.mixConfirmed} onChange={(e) => mod((s) => { s.mixConfirmed = e.target.checked; })} />{t("Confirmo que ambos formatos son de la misma familia con compatibilidad mecánica y de montaje verificada.")}</label>
+          {!compat.ok && <div className="mt-2 space-y-1">{compat.reasons.map((r) => <Notice key={r}>{translateValue(r)}</Notice>)}</div>}
           <div className="mt-2 space-y-1.5">
             {opts.map((o) => (
               <div key={o.name} className="rounded-md border border-border p-2 text-xs">
                 <div className="flex items-center justify-between gap-2"><b>{o.name}</b>
-                  <Btn className="h-7 text-xs" disabled={translateValue(!o.feasible)} onClick={() => mixInp && mod((s) => { s.cabinets = buildMix(mixInp, o, band); })}>{t("Aplicar")}</Btn></div>
+                  <Btn className="h-7 text-xs" disabled={!o.feasible} onClick={() => mixInp && mod((s) => { s.cabinets = buildMix(mixInp, o, band); })}>{t("Aplicar")}</Btn></div>
                 <div>{translateValue(o.large)} {t("grandes +")} {translateValue(o.small)} {t("chicos =")} <b>{translateValue(o.total)}</b> · {translateValue(fmtM(o.widthMm))} × {translateValue(fmtM(o.heightMm))} · {translateValue(o.resX)}×{translateValue(o.resY)} {t("px")}</div>
                 <div className="text-muted-foreground">{t("Dif.:")} {translateValue(o.dW >= 0 ? "+" : "")}{translateValue(o.dW)} / {translateValue(o.dH >= 0 ? "+" : "")}{translateValue(o.dH)} {t("mm ·")} {translateValue(o.cols)} {t("col ·")} {translateValue(o.bands)} {t("bandas de 1 m +")} {translateValue(o.rows - 2 * o.bands)} {t("de 0,5 m")}</div>
                 {!o.feasible && <div className="font-bold text-destructive">{t("Excede stock: faltan")} {translateValue(o.shortage.large)} {t("grandes /")} {translateValue(o.shortage.small)} {t("chicos")}</div>}
@@ -216,19 +216,19 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
       <div className="order-first min-w-0 space-y-3 lg:order-none">
         <Card title={t("Resultados")}>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-            <Stat label={translateValue(screen.geometry.type === "plana" ? "Ancho" : "Ancho desarrollado")} value={translateValue(fmtM(stats.widthMm))} />
-            <Stat label={t("Alto")} value={translateValue(fmtM(stats.heightMm))} />
-            <Stat label={t("Gabinetes")} value={translateValue(stats.count)} hint={stats.types.map((t) => `${t.count}× ${t.panel.widthMm}×${t.panel.heightMm}`).join(" + ")} />
-            <Stat label={t("Superficie LED")} value={translateValue(`${stats.areaM2.toFixed(2)} m²`)} hint={translateValue(stats.covered ? "Sin huecos" : `Envolvente ${stats.envelopeM2.toFixed(2)} m²`)} />
-            <Stat label={t("Resolución")} value={translateValue(`${stats.resX} × ${stats.resY}`)} />
-            <Stat label={t("Píxeles totales")} value={translateValue(fmtN(stats.activePixels))} />
-            <Stat label={t("Relación")} value={translateValue(stats.aspectLabel)} hint={translateValue(`${stats.diff169Pct >= 0 ? "+" : ""}${stats.diff169Pct.toFixed(2)}% vs 16:9`)} />
-            <Stat label={t("Peso / consumo")} value={translateValue(stats.weightKg == null ? "Sin datos" : `${stats.weightKg} kg`)} hint={translateValue(stats.powerMaxW == null ? "Consumo: sin datos" : `${stats.powerMaxW} W máx.`)} />
+            <Stat label={translateValue(screen.geometry.type === "plana" ? "Ancho" : "Ancho desarrollado")} value={fmtM(stats.widthMm)} />
+            <Stat label={t("Alto")} value={fmtM(stats.heightMm)} />
+            <Stat label={t("Gabinetes")} value={stats.count} hint={stats.types.map((t) => `${t.count}× ${t.panel.widthMm}×${t.panel.heightMm}`).join(" + ")} />
+            <Stat label={t("Superficie LED")} value={`${stats.areaM2.toFixed(2)} m²`} hint={stats.covered ? "Sin huecos" : `Envolvente ${stats.envelopeM2.toFixed(2)} m²`} />
+            <Stat label={t("Resolución")} value={`${stats.resX} × ${stats.resY}`} />
+            <Stat label={t("Píxeles totales")} value={fmtN(stats.activePixels)} />
+            <Stat label={t("Relación")} value={stats.aspectLabel} hint={`${stats.diff169Pct >= 0 ? "+" : ""}${stats.diff169Pct.toFixed(2)}% vs 16:9`} />
+            <Stat label={t("Peso / consumo")} value={stats.weightKg == null ? "Sin datos" : `${stats.weightKg} kg`} hint={stats.powerMaxW == null ? "Consumo: sin datos" : `${stats.powerMaxW} W máx.`} />
             {screen.geometry.type !== "plana" && <>
-              <Stat label={t("Apertura")} value={translateValue(`${curve.apertureDeg.toFixed(1)}°`)} hint={translateValue(curve.faceted ? `Giro ${curve.turnDeg.toFixed(2)}°` : "Continua")} />
-              <Stat label={t("Radio")} value={translateValue(curve.radiusMm ? fmtM(curve.radiusMm) : "-")} hint={translateValue(curve.faceted && curve.radiusVertexMm ? `a vértices ${fmtM(curve.radiusVertexMm)}` : curve.radiusRef)} />
-              <Stat label={t("Frente proyectado")} value={translateValue(fmtM(curve.frontWidthMm))} hint={translateValue(`Cuerda ${fmtM(curve.chordMm)}`)} />
-              <Stat label={t("Profundidad")} value={translateValue(fmtM(curve.depthMm))} hint={translateValue(curve.outerDiameterMm ? `Ø exterior ${fmtM(curve.outerDiameterMm)}` : undefined)} />
+              <Stat label={t("Apertura")} value={`${curve.apertureDeg.toFixed(1)}°`} hint={curve.faceted ? `Giro ${curve.turnDeg.toFixed(2)}°` : "Continua"} />
+              <Stat label={t("Radio")} value={curve.radiusMm ? fmtM(curve.radiusMm) : "-"} hint={curve.faceted && curve.radiusVertexMm ? `a vértices ${fmtM(curve.radiusVertexMm)}` : curve.radiusRef} />
+              <Stat label={t("Frente proyectado")} value={fmtM(curve.frontWidthMm)} hint={`Cuerda ${fmtM(curve.chordMm)}`} />
+              <Stat label={t("Profundidad")} value={fmtM(curve.depthMm)} hint={curve.outerDiameterMm ? `Ø exterior ${fmtM(curve.outerDiameterMm)}` : undefined} />
             </>}
           </div>
           {stats.overlaps && <div className="mt-2"><Notice kind="error">{t("Hay gabinetes superpuestos.")}</Notice></div>}
@@ -237,15 +237,15 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
         <Card title={t("Plano")} actions={
           <div className="flex flex-wrap gap-3 text-xs">
             <div className="flex gap-1" role="group" aria-label={t("Tipo de plano")}>
-              <Btn className="h-7 px-2 text-xs" variant={translateValue(!showWiring ? "default" : "outline")} onClick={() => setShowWiring(false)}>{t("Gabinetes")}</Btn>
-              <Btn className="h-7 px-2 text-xs" variant={translateValue(showWiring ? "default" : "outline")} onClick={() => setShowWiring(true)}>{t("Cableado")}</Btn>
+              <Btn className="h-7 px-2 text-xs" variant={!showWiring ? "default" : "outline"} onClick={() => setShowWiring(false)}>{t("Gabinetes")}</Btn>
+              <Btn className="h-7 px-2 text-xs" variant={showWiring ? "default" : "outline"} onClick={() => setShowWiring(true)}>{t("Cableado")}</Btn>
             </div>
-            <label className="flex items-center gap-1"><input type="checkbox" checked={translateValue(showDims)} onChange={(e) => setShowDims(e.target.checked)} />{t("Cotas")}</label>
-            <label className="flex items-center gap-1"><input type="checkbox" checked={translateValue(showNums)} onChange={(e) => setShowNums(e.target.checked)} />{t("Numeración")}</label>
-            <select className="rounded border border-input bg-background px-1" value={translateValue(screen.numbering.order)} onChange={(e) => mod((s) => { s.numbering.order = e.target.value as never; })}>
+            <label className="flex items-center gap-1"><input type="checkbox" checked={showDims} onChange={(e) => setShowDims(e.target.checked)} />{t("Cotas")}</label>
+            <label className="flex items-center gap-1"><input type="checkbox" checked={showNums} onChange={(e) => setShowNums(e.target.checked)} />{t("Numeración")}</label>
+            <select className="rounded border border-input bg-background px-1" value={screen.numbering.order} onChange={(e) => mod((s) => { s.numbering.order = e.target.value as never; })}>
               <option value="filas">{t("Por filas")}</option><option value="columnas">{t("Por columnas")}</option><option value="serpentina">{t("Serpentina")}</option>
             </select>
-            <select className="rounded border border-input bg-background px-1" value={translateValue(screen.numbering.start)} onChange={(e) => mod((s) => { s.numbering.start = e.target.value as never; })}>
+            <select className="rounded border border-input bg-background px-1" value={screen.numbering.start} onChange={(e) => mod((s) => { s.numbering.start = e.target.value as never; })}>
               <option value="tl">{t("Inicio ↖")}</option><option value="tr">{t("Inicio ↗")}</option><option value="bl">{t("Inicio ↙")}</option><option value="br">{t("Inicio ↘")}</option>
             </select>
           </div>}>
@@ -253,27 +253,27 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
             <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-md bg-muted p-1.5 text-xs">
               <span className="font-bold text-muted-foreground">{t("Editar en el plano:")}</span>
               {([["agregar", "＋ Agregar"], ["quitar", "− Quitar"], ["girar", "↻ Girar"], ["intercambiar", "⇄ Intercambiar"]] as const).map(([k, l]) => (
-                <Btn key={translateValue(k)} className="h-7 px-2 text-xs" variant={translateValue(tool === k ? "default" : "outline")} onClick={() => { setTool(k); setEditMsg(null); }}>{translateValue(l)}</Btn>
+                <Btn key={k} className="h-7 px-2 text-xs" variant={tool === k ? "default" : "outline"} onClick={() => { setTool(k); setEditMsg(null); }}>{translateValue(l)}</Btn>
               ))}
               {tool === "girar" && <>
-                <Btn className="h-7 px-2 text-xs" disabled={translateValue(!pick.size)} onClick={() => rotatePick(pick)}>↻ 90° {translateValue(pick.size === 1 ? "panel" : `grupo (${pick.size})`)}</Btn>
-                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={translateValue(!pick.size)} title={t("Girar 1° antihorario")} onClick={() => spin(-1)}>↺ 1°</Btn>
-                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={translateValue(!pick.size)} title={t("Girar 1° horario")} onClick={() => spin(1)}>↻ 1°</Btn>
-                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={translateValue(!pick.size)} title={t("Girar 5° antihorario")} onClick={() => spin(-5)}>↺ 5°</Btn>
-                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={translateValue(!pick.size)} title={t("Girar 5° horario")} onClick={() => spin(5)}>↻ 5°</Btn>
-                <span className="flex items-center gap-1"><Num className="h-7 w-20" value={translateValue(manualDeg)} onChange={translateValue(setManualDeg)} step={translateValue(0.5)} />°
-                  <Btn variant="outline" className="h-7 px-2 text-xs" disabled={translateValue(!pick.size || !manualDeg)} onClick={() => spin(manualDeg ?? 0)}>{t("Aplicar")}</Btn></span>
+                <Btn className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => rotatePick(pick)}>↻ 90° {translateValue(pick.size === 1 ? "panel" : `grupo (${pick.size})`)}</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title={t("Girar 1° antihorario")} onClick={() => spin(-1)}>↺ 1°</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title={t("Girar 1° horario")} onClick={() => spin(1)}>↻ 1°</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title={t("Girar 5° antihorario")} onClick={() => spin(-5)}>↺ 5°</Btn>
+                <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size} title={t("Girar 5° horario")} onClick={() => spin(5)}>↻ 5°</Btn>
+                <span className="flex items-center gap-1"><Num className="h-7 w-20" value={manualDeg} onChange={setManualDeg} step={0.5} />°
+                  <Btn variant="outline" className="h-7 px-2 text-xs" disabled={!pick.size || !manualDeg} onClick={() => spin(manualDeg ?? 0)}>{t("Aplicar")}</Btn></span>
                 <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size || !screen.cabinets.some((k) => pick.has(k.id) && k.angleDeg)} title={t("Quitar giro libre")} onClick={() => mod((s) => { s.cabinets.forEach((k) => { if (pick.has(k.id)) delete k.angleDeg; }); })}>0°</Btn>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => rotatePick(new Set(screen.cabinets.map((k) => k.id)))}>{t("↻ Girar pantalla completa")}</Btn>
-                <ScreenRotation screen={translateValue(screen)} onChange={(values) => mod((s) => { s.mountHeightM = sceneHeight(s, lookup); Object.assign(s, values); })} />
+                <ScreenRotation screen={screen} onChange={(values) => mod((s) => { s.mountHeightM = sceneHeight(s, lookup); Object.assign(s, values); })} />
                 <span className="flex items-center gap-1 rounded border border-input bg-background px-1.5" title={t("Altura libre de la base de la pantalla sobre el suelo (solo vistas 3D/espacial). Sirve para que las pantallas de techo no choquen con las de pared.")}>
                   <span className="font-bold text-muted-foreground">{t("Altura")}</span>
-                  <Num className="h-7 w-16" value={translateValue(screen.mountHeightM)} step={translateValue(0.1)} onChange={(v) => mod((s) => { if (v == null) delete s.mountHeightM; else s.mountHeightM = Math.max(0, v); })} />{t("m")} </span>
+                  <Num className="h-7 w-16" value={screen.mountHeightM} step={0.1} onChange={(v) => mod((s) => { if (v == null) delete s.mountHeightM; else s.mountHeightM = Math.max(0, v); })} />{t("m")} </span>
                 <Btn variant="outline" className="h-7 px-2 text-xs" onClick={() => setPick(new Set(screen.cabinets.map((k) => k.id)))}>{t("Seleccionar todos")}</Btn>
-                <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={translateValue(!pick.size)} onClick={() => setPick(new Set())}>{t("Limpiar")}</Btn>
+                <Btn variant="ghost" className="h-7 px-2 text-xs" disabled={!pick.size} onClick={() => setPick(new Set())}>{t("Limpiar")}</Btn>
               </>}
-              {tool === "agregar" && <select className="h-7 max-w-[180px] rounded border border-input bg-background px-1" value={translateValue(addPanelId || panel.id)} onChange={(e) => setAddPanelId(e.target.value)}>
-                {[...new Set([panel.id, ...stats.types.map((t) => t.panel.id), smallId, largeId])].map((id) => lookup(id)).filter((x): x is Panel => !!x).map((x) => <option key={translateValue(x.id)} value={translateValue(x.id)}>{x.name}</option>)}
+              {tool === "agregar" && <select className="h-7 max-w-[180px] rounded border border-input bg-background px-1" value={addPanelId || panel.id} onChange={(e) => setAddPanelId(e.target.value)}>
+                {[...new Set([panel.id, ...stats.types.map((t) => t.panel.id), smallId, largeId])].map((id) => lookup(id)).filter((x): x is Panel => !!x).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select>}
               <span className="ml-auto flex gap-1">
                 <Btn variant="outline" className="h-7 px-2 text-xs" title={t("Agregar columna a la derecha")} onClick={() => edge("col", true)}>{t("+ Col")}</Btn>
@@ -285,9 +285,9 @@ export function ScreenConfig({ screen, onNewPanel, dark }: { screen: Screen; onN
             </div>
           )}
           {editMsg && !showWiring && <div className="mb-2"><Notice>{translateValue(editMsg)}</Notice></div>}
-          {showWiring && wiring.errors.map((e) => <Notice key={translateValue(e)} kind="error">{translateValue(e)}</Notice>)}
-          <PlanView plan={showWiring ? wp : tool === "girar" && pick.size ? { ...fp, prims: [...fp.prims, ...screen.cabinets.filter((k) => pick.has(k.id)).map((k) => { const b = box(k); return { t: "rect" as const, x: b.x, y: b.y, w: b.w, h: b.h, stroke: "#F5A524", lw: Math.min(b.w, b.h) * 0.06, rot: k.angleDeg || undefined }; })] } : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={translateValue(showWiring ? undefined : onPlanClick)} />
-          {tp && !showWiring && <div className="mt-4 border-t border-border pt-3"><p className="mb-1 text-xs font-bold text-muted-foreground">{t("Vista superior (esquema)")}</p><PlanView plan={translateValue(tp)} className="h-auto max-h-[45vh] w-full" /></div>}
+          {showWiring && wiring.errors.map((e) => <Notice key={e} kind="error">{translateValue(e)}</Notice>)}
+          <PlanView plan={showWiring ? wp : tool === "girar" && pick.size ? { ...fp, prims: [...fp.prims, ...screen.cabinets.filter((k) => pick.has(k.id)).map((k) => { const b = box(k); return { t: "rect" as const, x: b.x, y: b.y, w: b.w, h: b.h, stroke: "#F5A524", lw: Math.min(b.w, b.h) * 0.06, rot: k.angleDeg || undefined }; })] } : fp} className="h-auto max-h-[60vh] w-full" onCabinetClick={showWiring ? undefined : onPlanClick} />
+          {tp && !showWiring && <div className="mt-4 border-t border-border pt-3"><p className="mb-1 text-xs font-bold text-muted-foreground">{t("Vista superior (esquema)")}</p><PlanView plan={tp} className="h-auto max-h-[45vh] w-full" /></div>}
         </Card>
       </div>
     </div>

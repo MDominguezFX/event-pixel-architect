@@ -6,7 +6,7 @@ export function PlanView({ plan, className, onCabinetClick }: { plan: Plan; clas
   useLocale();
   const w = plan.maxX - plan.minX, h = plan.maxY - plan.minY;
   return (
-    <svg viewBox={translateValue(`${plan.minX} ${plan.minY} ${w} ${h}`)} className={translateValue(className)} role="img" aria-label={translateValue(plan.title)}
+    <svg viewBox={`${plan.minX} ${plan.minY} ${w} ${h}`} className={className} role="img" aria-label={translateValue(plan.title)}
       onClick={(e) => {
         if (!onCabinetClick) return;
         const svg = e.currentTarget, pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
@@ -19,17 +19,17 @@ export function PlanView({ plan, className, onCabinetClick }: { plan: Plan; clas
       </defs>
       {plan.prims.map((p, i) => {
         if (p.t === "rect") return (
-          <g key={translateValue(i)} transform={translateValue(p.rot ? `rotate(${p.rot} ${p.x + p.w / 2} ${p.y + p.h / 2})` : undefined)}>
-            <rect x={translateValue(p.x)} y={translateValue(p.y)} width={translateValue(p.w)} height={translateValue(p.h)} fill={translateValue(p.fill ?? "none")} stroke={translateValue(p.stroke)} strokeWidth={translateValue(p.lw)} />
-            {p.hatch && <rect x={translateValue(p.x)} y={translateValue(p.y)} width={translateValue(p.w)} height={translateValue(p.h)} fill="url(#hatch)" pointerEvents="none" />}
+          <g key={i} transform={p.rot ? `rotate(${p.rot} ${p.x + p.w / 2} ${p.y + p.h / 2})` : undefined}>
+            <rect x={p.x} y={p.y} width={p.w} height={p.h} fill={p.fill ?? "none"} stroke={p.stroke} strokeWidth={p.lw} />
+            {p.hatch && <rect x={p.x} y={p.y} width={p.w} height={p.h} fill="url(#hatch)" pointerEvents="none" />}
           </g>
         );
-        if (p.t === "line") return <line key={translateValue(i)} x1={translateValue(p.x1)} y1={translateValue(p.y1)} x2={translateValue(p.x2)} y2={translateValue(p.y2)} stroke={translateValue(p.stroke)} strokeWidth={translateValue(p.lw)} />;
-        if (p.t === "poly") return <polyline key={translateValue(i)} points={p.pts.map((q) => `${q.x},${q.y}`).join(" ")} fill="none" stroke={translateValue(p.stroke)} strokeWidth={translateValue(p.lw)} />;
+        if (p.t === "line") return <line key={i} x1={p.x1} y1={p.y1} x2={p.x2} y2={p.y2} stroke={p.stroke} strokeWidth={p.lw} />;
+        if (p.t === "poly") return <polyline key={i} points={p.pts.map((q) => `${q.x},${q.y}`).join(" ")} fill="none" stroke={p.stroke} strokeWidth={p.lw} />;
         return (
-          <text key={translateValue(i)} x={translateValue(p.x)} y={translateValue(p.y)} fontSize={translateValue(p.size)} fill={translateValue(p.color)} fontWeight={translateValue(p.bold ? 700 : 400)}
-            textAnchor={translateValue(p.align === "center" ? "middle" : p.align === "right" ? "end" : "start")}
-            transform={translateValue(p.rot ? `rotate(${p.rot} ${p.x} ${p.y})` : undefined)} pointerEvents="none">{translateValue(p.s)}</text>
+          <text key={i} x={p.x} y={p.y} fontSize={p.size} fill={p.color} fontWeight={p.bold ? 700 : 400}
+            textAnchor={p.align === "center" ? "middle" : p.align === "right" ? "end" : "start"}
+            transform={p.rot ? `rotate(${p.rot} ${p.x} ${p.y})` : undefined} pointerEvents="none">{translateValue(p.s)}</text>
         );
       })}
     </svg>
