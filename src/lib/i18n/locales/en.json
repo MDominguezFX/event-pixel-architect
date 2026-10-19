@@ -486,5 +486,17 @@
   "Más cercana": "Closest",
   "Sólo chicos": "Small only",
   "Sólo grandes": "Large only",
-  "Mezcla óptima": "Optimal mixed layout"
+  "Mezcla óptima": "Optimal mixed layout",
+  "col ·": "col ·",
+  "grandes /": "large /",
+  "Preset reconocido: raíz &lt;": "Recognized preset: root <",
+  "&gt; · versión": "> · version",
+  "Solo 500 × 500": "Only 500 × 500",
+  "Solo 500 × 1000": "Only 500 × 1000",
+  "Resolución {0} debe ser un entero positivo.": "Resolution {0} must be a positive integer.",
+  "Versión de esquema {0} más nueva que la soportada ({1}).": "Schema version {0} is newer than the supported version ({1}).",
+  "Resolución horizontal debe ser un entero positivo.": "Horizontal resolution must be a positive integer.",
+  "Resolución vertical debe ser un entero positivo.": "Vertical resolution must be a positive integer.",
+  "Ancho debe ser positivo.": "Width must be positive.",
+  "Alto debe ser positivo.": "Height must be positive."
 }

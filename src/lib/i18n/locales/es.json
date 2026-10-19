@@ -486,5 +486,17 @@
   "Más cercana": "Más cercana",
   "Sólo chicos": "Sólo chicos",
   "Sólo grandes": "Sólo grandes",
-  "Mezcla óptima": "Mezcla óptima"
+  "Mezcla óptima": "Mezcla óptima",
+  "col ·": "col ·",
+  "grandes /": "grandes /",
+  "Preset reconocido: raíz &lt;": "Preset reconocido: raíz &lt;",
+  "&gt; · versión": "&gt; · versión",
+  "Solo 500 × 500": "Solo 500 × 500",
+  "Solo 500 × 1000": "Solo 500 × 1000",
+  "Resolución {0} debe ser un entero positivo.": "Resolución {0} debe ser un entero positivo.",
+  "Versión de esquema {0} más nueva que la soportada ({1}).": "Versión de esquema {0} más nueva que la soportada ({1}).",
+  "Resolución horizontal debe ser un entero positivo.": "Resolución horizontal debe ser un entero positivo.",
+  "Resolución vertical debe ser un entero positivo.": "Resolución vertical debe ser un entero positivo.",
+  "Ancho debe ser positivo.": "Ancho debe ser positivo.",
+  "Alto debe ser positivo.": "Alto debe ser positivo."
 }
